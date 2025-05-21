@@ -1,0 +1,26 @@
+[project]
+name = "coasti"
+version = "0.1.0"
+description = "Installer for Coasti, the Open-Source Business Intelligence Framework"
+readme = "README.md"
+requires-python = ">=3.9,<3.13"
+
+dependencies = [
+    "python-dotenv==1.0.1",
+    "typer==0.15.2",
+    "PyYAML==6.0.2",
+    "ruamel.yaml==0.18.10",
+    "xkcdpass>=1.20",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+exclude = ["*tests*"]
+include = ["pyproject.toml", "coasti/*.py"]
+
+# make the cli available
+[project.scripts]
+coasti = "coasti:main"

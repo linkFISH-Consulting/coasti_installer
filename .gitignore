@@ -1,0 +1,22 @@
+target/
+logs/
+.venv
+.env
+.env-local
+.credentials
+data/
+__pycache__
+venv/
+*.egg-info/
+build/
+dist/
+
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Environment files
+.env
+*.auto.tfvars
+
