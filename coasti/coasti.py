@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import random
 import re
+import shutil
 from typing import Annotated, Any, Callable, Dict, List, Literal, Optional, TypedDict
 import dotenv
 import typer
@@ -65,42 +66,6 @@ class TyperLogHandler(logging.Handler):
             fg = typer.colors.RED
             bold = True
         typer.secho(self.format(record), bg=bg, fg=fg, bold=bold)
-
-
-@app.command()
-def scaffold(
-    repo_path: Annotated[
-        Path,
-        typer.Option(
-            file_okay=False,
-            dir_okay=True,
-            resolve_path=True,
-            writable=True,
-            help="Where is the repository? Defaults to the current directory.",
-        ),
-    ] = None,
-):
-    """
-    Initialize a new customer repository. Not implemented.
-    """
-
-    # Check the repository path
-    if repo_path is None:
-        repo_path = Path.cwd()
-
-    user_config_path = repo_path / "config" / "config.yml"
-    credentials_path = repo_path / "config" / ".credentials"
-
-    if not user_config_path.is_file() or not credentials_path.is_file():
-        log.error(
-            "At least one mandatory config file is missing:\n"
-            + f" - {user_config_path}\n"
-            + f" - {credentials_path}"
-        )
-        raise typer.Exit(code=1)
-
-    credentials = dotenv.dotenv_values(credentials_path)
-    user_config = yaml.safe_load(user_config_path.read_text())
 
 
 @app.command()
@@ -219,10 +184,80 @@ def _install(
         else:
             log.info(f"{name} is set to disabled, skipping.")
             continue
-        product = Product.from_yaml_config(conf, parent_repo_path=repo_path)
+        product = Product.from_yaml_config(conf, path=Path(f"./products/{name}"))
         product.install(method=method)
 
     update_workspace_config_file()
+
+
+@app.command()
+def init(
+    path: Annotated[
+        Path,
+        typer.Option(
+            file_okay=False,
+            dir_okay=False,
+            resolve_path=True,
+            writable=True,
+            help="Where to place the repository? Defaults to `coasti` in the current directory.",
+        ),
+    ] = None,
+):
+    """
+    Initialize a new coasti repository, by downloading the coasti template.
+    """
+
+    if path is None:
+        path = Path(
+            typer.prompt(
+                "Where to place the repository?\n",
+                default=Path.cwd() / "coasti_deployment",
+            )
+        )
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        log.info(f"Using {path}")
+
+    if path.is_dir():
+        log.error(f"Directory {path} already exists.")
+        raise typer.Exit(code=1)
+
+    # since the install is simply a git clone, with reset history, we use products class
+    product = Product(
+        name=path.name,
+        url="git@github.com:linkFISH-Consulting/fe_bios_cloud.git",
+        # currently only for dev puprose, so use ssh
+        branch="master",  # TODO: use main
+        path=path,
+    )
+
+    product.install(method="clone")
+
+    # make new clean git repo out of this
+    if (path / ".git").is_dir():
+        shutil.rmtree((path / ".git").absolute())
+
+    # create new git repo
+    subprocess.run(
+        ["git", "init"],
+        check=True,
+        cwd=path,
+    )
+    subprocess.run(
+        ["git", "add", "."],
+        check=True,
+        cwd=path,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "Coasti init"],
+        check=True,
+        cwd=path,
+    )
+    subprocess.run(
+        ["git", "branch", "-M", "main"],
+        check=True,
+        cwd=path,
+    )
 
 
 @dataclass(init=False)
@@ -231,13 +266,13 @@ class Product:
     url: str
     branch: str
     auth_token: str | None
-    parent_repo_path: Path
+    path: Path  # products live in a products/ folder inside another repo
 
     def __init__(
         self,
         name: str,
         url: str,
-        parent_repo_path: Path,
+        path: Path,
         auth_token: str | None = None,
         branch: str = "main",
     ):
@@ -245,16 +280,16 @@ class Product:
         self.url = url
         self.branch = branch
         self.auth_token = auth_token
-        self.parent_repo_path = parent_repo_path
+        self.path = path
 
     @classmethod
-    def from_yaml_config(cls, config: dict, parent_repo_path: Path = None):
+    def from_yaml_config(cls, config: dict, path: Path = None):
         return cls(
             name=config["name"],
             url=config["url"],
             branch=config.get("branch", "main"),
             auth_token=config.get("auth_token"),
-            parent_repo_path=parent_repo_path or Path.cwd(),
+            path=path or Path.cwd(),
         )
 
     @property
@@ -281,6 +316,8 @@ class Product:
             of the parent repo.
             "update" will detect the used install method (is a .git folder present?)
             and update either via subtree or git pull.
+        path_prefix : str
+            Prefix for the path where the product will be installed. Defaults to "products/".
         """
 
         is_update = False
@@ -314,7 +351,7 @@ class Product:
                     "subtree",
                     "add" if not is_update else "pull",
                     "--prefix",
-                    f"products/{self.name}",
+                    f"{self.path}",
                     self.url_authenticated,
                     self.branch,
                     "--squash",
@@ -333,16 +370,13 @@ class Product:
                 )
                 raise typer.Exit(code=1)
         elif method == "clone":
-            log.warning(
-                f"Installing {self.name} via git clone instead of subtree. "
-                + "This is not recommended for production."
-            )
+            log.info(f"Installing {self.name} via git clone.")
             try:
                 if is_update:
                     cmd = [
                         "git",
                         "-C",
-                        f"products/{self.name}",
+                        f"{self.path}",
                         "pull",
                     ]
                 else:
@@ -352,7 +386,7 @@ class Product:
                         "--branch",
                         self.branch,
                         self.url_authenticated,
-                        f"products/{self.name}",
+                        f"{self.path}",
                     ]
                 subprocess.run(
                     cmd,
@@ -457,7 +491,6 @@ def update_workspace_config_file(workspace_file: Path = None):
     if "load_from" not in data.keys() or data["load_from"] is None:
         # this happens when we create the file ourself
         data["load_from"] = []
-
 
     # warn about configured but not installed products
     configured_products = []
