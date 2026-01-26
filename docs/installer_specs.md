@@ -10,6 +10,9 @@ pip install coasti
 # interactive, creates at least customer repo from template
 coasti init
 
+coasti configure # git dev / prod branches? maybe part of git init
+
+
 # install coasti products
 coasti product list # show whats installed etc
 coasti product add  # should this install, or only add to config? [wrapper for more subcommands]

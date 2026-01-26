@@ -1,0 +1,20 @@
+_min_copier_version: 9.11.3
+
+
+
+# questions
+test_question:
+    type: bool
+    help: Should we init Online Version Control?
+    default: yes
+
+_message_after_copy: |
+    Folder structure created at "{{ _copier_conf.dst_path }}"
+
+    Next steps:
+
+    1. Change directory to the project root:
+
+       $ cd {{ _copier_conf.dst_path }}
+
+    2. See "README.md" and start coding.

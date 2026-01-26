@@ -8,64 +8,31 @@ TODOs:
 - coasti update coasti
 """
 
-from dataclasses import dataclass
 import json
+import logging
 import os
-from pathlib import Path
 import random
 import re
 import shutil
-from typing import Annotated, Any, Callable, Dict, List, Literal, Optional, TypedDict
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from pprint import pformat
+
 import dotenv
 import typer
-import subprocess
-from pprint import pformat
-import logging
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from xkcdpass import xkcd_password
 
+from .logger import log, setup_logging
+
 app = typer.Typer()
-log = logging.getLogger("coasti")
 
 
 WORD_LIST = xkcd_password.generate_wordlist(min_length=4, max_length=8)
 
-# Define a new log level for success (between INFO and WARNING)
-SUCCESS_LEVEL_NUM = 25
-logging.addLevelName(SUCCESS_LEVEL_NUM, "SUCCESS")
 
-
-def success(self, message, *args, **kwargs):
-    if self.isEnabledFor(SUCCESS_LEVEL_NUM):
-        self._log(SUCCESS_LEVEL_NUM, message, args, **kwargs)
-
-
-logging.Logger.success = success
-
-
-class TyperLogHandler(logging.Handler):
-    # use logging with typer
-    # https://github.com/fastapi/typer/issues/203#issuecomment-840690307
-
-    def emit(self, record: logging.LogRecord) -> None:
-        fg = None
-        bg = None
-        bold = False
-        if record.levelno == logging.DEBUG:
-            fg = typer.colors.BRIGHT_BLACK
-        elif record.levelno == logging.INFO:
-            fg = None
-        elif record.levelno == SUCCESS_LEVEL_NUM:
-            fg = typer.colors.GREEN
-        elif record.levelno == logging.WARNING:
-            fg = typer.colors.YELLOW
-        elif record.levelno == logging.CRITICAL:
-            fg = typer.colors.BRIGHT_RED
-        elif record.levelno == logging.ERROR:
-            fg = typer.colors.RED
-            bold = True
-        typer.secho(self.format(record), bg=bg, fg=fg, bold=bold)
 
 
 @app.command()
@@ -906,10 +873,6 @@ def deep_update(source: dict, other: dict):
 
 
 def main():
-    typer_handler = TyperLogHandler()
-    logging.basicConfig(
-        level=logging.DEBUG, handlers=(typer_handler,), format="%(message)s"
-    )
     app()
 
 
