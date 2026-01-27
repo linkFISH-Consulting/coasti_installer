@@ -20,3 +20,4 @@ crash.*.log
 .env
 *.auto.tfvars
 
+.vscode

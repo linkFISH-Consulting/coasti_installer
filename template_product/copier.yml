@@ -1,0 +1,36 @@
+# this looks like a convenient way we can use for our products to simply
+# generate an answer file from yaml using the same logic as for coasti.
+
+_min_copier_version: 9.11.3
+
+
+source:
+    type: str
+    help: Url of the product's git repo
+
+branch:
+    type: str
+    help: "Which branch to use"
+    default: "main"
+
+auth:
+    type: str
+    help: "Authentication: auth token, path to ssh key, or skip"
+    default: "skip"
+
+install_method:
+    type: str
+    help: "Installation method"
+    choices: ["subtree", "clone"]
+    default: "subtree"
+
+id:
+    type: str
+    help: "Unique Product identifier. (Temporary, will be fetched from git in the future)"
+    default: "{{ source | regex_replace('^.*/', '') | trim('.git') }}"
+
+rel_path:
+    type: str
+    help: "Install location. (Temporary, will be fetched from git in the future)"
+    default: "products/{{ id }}"
+
