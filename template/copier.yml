@@ -1,15 +1,8 @@
 _min_copier_version: 9.11.3
 
 
-
-# questions
-test_question:
-    type: bool
-    help: Should we init Online Version Control?
-    default: yes
-
 _message_after_copy: |
-    Folder structure created at "{{ _copier_conf.dst_path }}"
+    Coasti folder structure created at "{{ _copier_conf.dst_path }}"
 
     Next steps:
 
@@ -18,3 +11,31 @@ _message_after_copy: |
        $ cd {{ _copier_conf.dst_path }}
 
     2. See "README.md" and start coding.
+
+    3. Add products, see `coasti product --help`
+
+_answers_file: .coasti-setup-answers.yml
+
+_external_data:
+    auth_test: ./config/secrets/auth_test
+
+_exclude:
+    - .gitkeep
+    - copier.yml
+
+# questions
+is_vsc_online:
+    type: bool
+    help: Should we init Online Version Control?
+    default: yes
+
+vsc_online_repo:
+    type: str
+    help: What is the url of the remote repo?
+    when: "{{ is_vsc_online }}"
+
+auth_test_token:
+    help: "This should only end up in config/secrets. (default: random 64 char alphanumeric)"
+    secret: true
+    default: "{{ _external_data.auth_test | default(64|ans_random|hash('sha512')) }}"
+

@@ -14,5 +14,5 @@ from .product import app as product_app
 app = typer.Typer()
 
 
-app.add_typer(init_app, name="init", help="Initialize a coasti repository")
+app.add_typer(init_app) # only one command so far
 app.add_typer(product_app, name="product", help="List, add or update products")

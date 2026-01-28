@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------ #
 # @Author:        F. Paul Spitzner
 # @Created:       2026-01-26 13:41:54
-# @Last Modified: 2026-01-26 16:56:59
+# @Last Modified: 2026-01-28 10:45:04
 # ------------------------------------------------------------------------------ #
 
 """
@@ -26,7 +26,7 @@ app = typer.Typer()
 def init(
     coasti_dir: Annotated[
         Path | None,
-        typer.Option(
+        typer.Argument(
             file_okay=False,
             dir_okay=True,
             resolve_path=True,
@@ -34,7 +34,15 @@ def init(
             help="Where to place coasti?",
         ),
     ] = None,
+    recopy: Annotated[
+        bool,
+        typer.Option(
+            "--recopy",
+            help="Use copiers recopy option, ignores your git changes.",
+        ),
+    ] = False,
 ):
+    """Initialize a coasti workspace"""
     if coasti_dir is None:
         coasti_dir = cast(
             Path,
@@ -45,4 +53,14 @@ def init(
             ),
         )
 
-    copier.run_copy("./template", coasti_dir)
+    if (coasti_dir / "config" / ".coasti-setup-answers.yml").exists() and not recopy:
+        copier.run_update(
+            dst_path=coasti_dir,
+            answers_file="./config/.coasti-setup-answers.yml",
+        )
+    else:
+        copier.run_copy(
+            src_path="/Users/paul/para/3_Areas/lf_coasti/_coasti_installer.nosync/template/",
+            dst_path=coasti_dir,
+            answers_file="./config/.coasti-setup-answers.yml",
+        )
