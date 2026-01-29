@@ -1,10 +1,8 @@
 target/
-logs/
 .venv
 .env
 .env-local
 .credentials
-data/
 __pycache__
 venv/
 *.egg-info/

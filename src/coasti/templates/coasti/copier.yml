@@ -16,11 +16,7 @@ _message_after_copy: |
 
 _answers_file: .coasti-setup-answers.yml
 
-_external_data:
-    auth_test: ./config/secrets/auth_test
-
 _exclude:
-    - .gitkeep
     - copier.yml
 
 # questions
@@ -37,5 +33,15 @@ vsc_online_repo:
 auth_test_token:
     help: "This should only end up in config/secrets. (default: random 64 char alphanumeric)"
     secret: true
-    default: "{{ _external_data.auth_test | default(64|ans_random|hash('sha512')) }}"
+    default: "{{ 64|ans_random|hash('sha512') }}"
+    # TODO: we would like to check if the file already exists in the destination
+    # but the requires file-io which is not a default jinja2 filter.
+    # thus, easier to do this programmatically from the python side.
+    # likely, each content package should define something like `auth_test_token_file`
+    # so we can check easier.
 
+_tasks:
+    - command: "git init"
+      when: "{{ _copier_operation == 'copy' }}"
+    - command: "git add .; git commit -m 'Coasti init'"
+      when: "{{ _copier_operation == 'copy' }}"

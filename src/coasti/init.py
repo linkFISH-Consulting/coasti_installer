@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------ #
 # @Author:        F. Paul Spitzner
 # @Created:       2026-01-26 13:41:54
-# @Last Modified: 2026-01-28 10:45:04
+# @Last Modified: 2026-01-29 09:40:52
 # ------------------------------------------------------------------------------ #
 
 """
@@ -10,6 +10,7 @@
 Initialize project structure.
 """
 
+import importlib.resources
 import os
 from pathlib import Path
 from typing import Annotated, cast
@@ -34,11 +35,18 @@ def init(
             help="Where to place coasti?",
         ),
     ] = None,
+    trust: Annotated[
+        bool,
+        typer.Option(
+            "--trust",
+            help="Passed to copier, so that potentially unsafe features are allowed.",
+        ),
+    ] = False,
     recopy: Annotated[
         bool,
         typer.Option(
             "--recopy",
-            help="Use copiers recopy option, ignores your git changes.",
+            help="Use copiers' recopy option, ignores your git changes.",
         ),
     ] = False,
 ):
@@ -57,10 +65,14 @@ def init(
         copier.run_update(
             dst_path=coasti_dir,
             answers_file="./config/.coasti-setup-answers.yml",
+            unsafe=trust,
         )
     else:
-        copier.run_copy(
-            src_path="/Users/paul/para/3_Areas/lf_coasti/_coasti_installer.nosync/template/",
-            dst_path=coasti_dir,
-            answers_file="./config/.coasti-setup-answers.yml",
-        )
+        # get our coasti installers module location. templates are included.
+        with importlib.resources.path("coasti", "") as module_path:
+            copier.run_copy(
+                src_path=str(module_path / "templates" / "coasti"),
+                dst_path=coasti_dir,
+                answers_file="./config/.coasti-setup-answers.yml",
+                unsafe=trust,
+            )
