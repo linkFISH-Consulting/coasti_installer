@@ -24,6 +24,9 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "coasti"
 module-root = "src"
+include = [
+  "coasti/_bundles/*.bundle",
+]
 
 
 [tool.ruff]

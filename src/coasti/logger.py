@@ -81,9 +81,6 @@ def setup_logging(
     typer_handler.setFormatter(logging.Formatter("%(message)s"))
     log.addHandler(typer_handler)
 
-    # Cache the instance
-    log.debug(f"Logging setup done, level {level}")
-
     return log
 
 

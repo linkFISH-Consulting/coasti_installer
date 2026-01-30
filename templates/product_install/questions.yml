@@ -16,6 +16,7 @@ branch:
 auth:
     type: str
     help: "Authentication: auth token, path to ssh key, or skip"
+    secret: true
     default: "skip"
 
 install_method:
@@ -33,4 +34,3 @@ rel_path:
     type: str
     help: "Install location. (Temporary, will be fetched from git in the future)"
     default: "products/{{ id }}"
-

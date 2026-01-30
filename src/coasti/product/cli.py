@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.resources
 import os
 from pathlib import Path
 from typing import Annotated
@@ -21,7 +22,7 @@ def list():
     """List installed products"""
 
     _, config = get_and_check_products_yaml()
-    products = config.get("products", [])
+    products = config.get("products") or []
 
     typer.echo(typer.style("products:", fg=typer.colors.BRIGHT_BLACK))
     for p in products:
@@ -56,13 +57,16 @@ def add(
 
     products_yaml_path, config = get_and_check_products_yaml()
 
-    answers = get_answers_from_template(
-        src_path="./template_product",
-        data={"source": source},
-        defaults=quiet,
-    )
+    with importlib.resources.path("coasti", "") as module_path:
+        answers = get_answers_from_template(
+            src_path=str(module_path / "templates" / "product_install"),
+            data={"source": source},
+            defaults=quiet,
+        )
 
-    products = config.get("products", [])
+
+    # add to products.yml
+    products = config.get("products") or []
     product_ids = [p.get("id") for p in products if p.get("id")]
     id = answers["id"]
     if id in product_ids:
@@ -97,7 +101,7 @@ def get_and_check_products_yaml():
         raise typer.Exit(code=1)
 
     config = yaml.load(products_yaml_path)
-    if not isinstance(config, CommentedMap) or len(config.get("products", [])) == 0:
+    if not isinstance(config, CommentedMap) or "products" not in config.keys():
         log.info("No products found in config/products.yml.")
         raise typer.Exit(code=0)
 

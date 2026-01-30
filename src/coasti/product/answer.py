@@ -26,6 +26,7 @@ def get_answers_from_template(src_path : str, **kwargs)-> dict[str, Any]:
     with AnswerWorker(src_path = src_path, **kwargs) as worker:
 
         worker.get_answers()
+        # worker.template.questions_data to get secert=true
         data={
             k: v
             for k, v in worker.answers.combined.items()
