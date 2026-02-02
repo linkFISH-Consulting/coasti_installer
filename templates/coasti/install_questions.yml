@@ -1,15 +1,14 @@
 
 coasti_version:
     type: str
-    default: "{{ _copier_python }}"  # placeholder; CLI will override via --data
-    when: false
-
-foo:
-    type: str
+    default: "unknown"
+    when: true
+    # we inject this via the `data` kwarg.
+    # bug? with when=false, it does not end up in the anwers.yml
 
 is_vcs_online:
     type: bool
-    help: Should we init Online Version Control?
+    help: Do you want to use a remote git repo as origin?
     default: yes
 
 vcs_online_repo:
@@ -17,13 +16,31 @@ vcs_online_repo:
     help: What is the url of the remote repo?
     when: "{{ is_vcs_online }}"
 
-vcs_auth_coasti:
-    help: "Auth token or path to an ssh key for accessing the remote repo:"
-    secret: true
-    placeholder: enter auth token (default empty)
-    default: ""
+vcs_auth_type:
+    type: str
+    help: "How to authenticate with the remote repo?"
+    choices:
+        - "skip"
+        - "Auth Token"
+        - "SSH Key"
+    default: "skip"
     when: "{{ is_vcs_online }}"
+
+vcs_auth_token:
+    type: str
+    help: "Enter your auth token:"
+    secret: true
+    placeholder: github_pat_123...
+    default:  ""
+    when: "{{ is_vcs_online and vcs_auth_type == 'Auth Token' }}"
     # saved in config/secrests/vcs_auth_coasti (because we als keep vcs_auth_product_xyz)
+
+vcs_auth_sshkeypath:
+    type: str
+    help: "Enter the absolute file path to an ssh key-pair:"
+    default:  "{{ '~/.ssh/id_rsa' | expanduser}}"
+    when: "{{ is_vcs_online and vcs_auth_type == 'SSH Key' }}"
+
 
 sample_pass:
     help: "Sample Secret, auto-generated. (random 64 char alphanumeric)"

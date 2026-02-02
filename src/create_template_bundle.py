@@ -10,9 +10,8 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     print(REPO_ROOT)
 
-    # Bundle includes tags and all branches/commits. You can restrict this later.
     subprocess.check_call(
-        ["git", "bundle", "create", str(OUT), "--all", "--tags"],
+        ["git", "bundle", "create", str(OUT), "--all"],
         cwd=str(REPO_ROOT),
     )
 
