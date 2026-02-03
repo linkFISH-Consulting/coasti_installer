@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import importlib.resources
+from importlib import resources
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+import sys
 from typing import Annotated
 
 import copier
@@ -59,7 +60,7 @@ def add(
 
     products_yaml_path, config = get_and_check_products_yaml()
 
-    with importlib.resources.path("coasti", "") as module_path:
+    with resources.path("coasti", "") as module_path:
         answers = get_answers_from_template(
             src_path=str(module_path / "product" / "questions"),
             data={"vcs_repo": vcs_repo},
@@ -133,8 +134,7 @@ def install(
     product_ids = [p.get("id") for p in products if p.get("id")]
     if pid not in product_ids:
         log.error(
-            f"{pid} not found in products. "
-            f"Available for install:\n  {product_ids}"
+            f"{pid} not found in products. Available for install:\n  {product_ids}"
         )
         raise typer.Exit(code=1)
 
@@ -208,12 +208,22 @@ def copier_git_injection(
         extra_env = {}
 
         if https_token:
-            extra_env["GIT_ASKPASS"] = f"echo {https_token}"
+            with resources.as_file(
+                resources.files("coasti.product").joinpath(
+                    "askpass" + (".bat" if sys.platform == "win32" else ".sh")
+                )
+            ) as askpass_script:
+                extra_env["GIT_ASKPASS"] = askpass_script
+                # scripts simply return the token env var
+
+            extra_env["GIT_AUTH_TOKEN"] = https_token
             extra_env["GIT_TERMINAL_PROMPT"] = "0"
             # Some git flows require this to force askpass in non-tty contexts:
 
         elif ssh_key_path:
-            extra_env["GIT_SSH_COMMAND"] = f"ssh -i {ssh_key_path} -o IdentitiesOnly=yes"
+            extra_env["GIT_SSH_COMMAND"] = (
+                f"ssh -i {ssh_key_path} -o IdentitiesOnly=yes"
+            )
 
         def patched_get_git():
             git = original_get_git()
