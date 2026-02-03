@@ -47,8 +47,3 @@ vcs_auth_sshkeypath:
     default: "{{ '~/.ssh/id_rsa' | expanduser}}"
     when: "{{  vcs_auth_type in ['SSH Key'] }}"
 
-install_after_add:
-    type: bool
-    help: "Do you want to install the product after adding it?"
-    default: true
-

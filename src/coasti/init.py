@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------ #
 # @Author:        F. Paul Spitzner
 # @Created:       2026-01-26 13:41:54
-# @Last Modified: 2026-02-02 12:44:28
+# @Last Modified: 2026-02-03 12:11:03
 # ------------------------------------------------------------------------------ #
 
 """
@@ -81,28 +81,33 @@ def init(
     # we need to make sure the _src_path stays the same in the answers (or mod it).
     template_repo = materialize_template_repo()
 
-    if (coasti_dir / "config" / "install_answers.yml").exists() and not recopy:
-        log.debug(f"Using copier update on {coasti_dir}")
-        copier.run_update(
-            dst_path=coasti_dir,
-            answers_file="./config/install_answers.yml",
-            data={"coasti_version" : metadata.version("coasti")},
-            vcs_ref=vcs_ref,
-            unsafe=True,
-            overwrite=True,
-        )
-    else:
-        log.debug(
-            f"Using copier copy on {coasti_dir} using template from {str(template_repo)}"
-        )
-        copier.run_copy(
-            src_path=str(template_repo),
-            dst_path=coasti_dir,
-            answers_file="./config/install_answers.yml",
-            data={"coasti_version": metadata.version("coasti")},
-            vcs_ref=vcs_ref,
-            unsafe=True,
-        )
+    try:
+        if (coasti_dir / "config" / "install_answers.yml").exists() and not recopy:
+            log.debug(f"Using copier update on {coasti_dir}")
+            copier.run_update(
+                dst_path=coasti_dir,
+                answers_file="./config/install_answers.yml",
+                data={"coasti_version" : metadata.version("coasti")},
+                vcs_ref=vcs_ref,
+                unsafe=True,
+                overwrite=True,
+            )
+        else:
+            log.debug(
+                f"Using copier copy on {coasti_dir} with template from "
+                f"{str(template_repo)}"
+            )
+            copier.run_copy(
+                src_path=str(template_repo),
+                dst_path=coasti_dir,
+                answers_file="./config/install_answers.yml",
+                data={"coasti_version": metadata.version("coasti")},
+                vcs_ref=vcs_ref,
+                unsafe=True,
+            )
+    except copier.ProcessExecutionError as e:
+        log.error("Failed to init from template")
+        log.info(e)
 
 
 def materialize_template_repo() -> Path:

@@ -1,10 +1,10 @@
 _tasks:
     - command: "git init"
-      when: "{{ _copier_operation == 'copy' }}"
+      when: "{{ _copier_operation == 'copy' and vcs_repo_type != 'skip' }}"
     - command: "git add .; git commit -m 'Coasti init'"
-      when: "{{ _copier_operation == 'copy' }}"
-    - command: "git remote add origin {{ _copier_answers.get('vcs_online_repo', '') }}"
-      when: "{{ _copier_operation == 'copy' and _copier_answers.get('is_vcs_online', false) }}"
+      when: "{{ _copier_operation == 'copy' and vcs_repo_type != 'skip' }}"
+    - command: "git remote add origin {{ vcs_online_repo }}"
+      when: "{{ _copier_operation == 'copy' and vcs_repo_type == 'remote' }}"
 
 
 _message_after_copy: |
@@ -20,7 +20,6 @@ _message_after_copy: |
     - To add products, see:
         coasti product --help
 
-    {%- if _copier_operation == 'copy' and _copier_answers.get('is_vcs_online', false) %}
     - Push the local repo to your remote origin:
         git push --set-upstream origin main
-    {%- endif %}
+

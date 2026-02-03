@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from importlib import resources
 import os
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
+from importlib import resources
 from pathlib import Path
-import sys
 from typing import Annotated
 
 import copier
@@ -72,6 +72,18 @@ def add(
     config["products"] = products
     product_ids = [p.get("id") for p in products if p.get("id")]
     pid = answers["id"]
+
+    # if we got auth info, place it in coasti-level secrets
+    secrets_path = products_yaml_path.parent / "secrets" / f"vcs_auth_{pid}"
+    if answers["vcs_auth_type"] == "Auth Token":
+        secrets_path.write_text(answers["vcs_auth_token"])
+    elif answers["vcs_auth_type"] == "SSH Key":
+        secrets_path.write_text(answers["vcs_auth_sshkeypath"])
+
+    # remove secret and temporary answers
+    answers.pop("vcs_auth_token", None)
+    answers.pop("vcs_auth_sshkeypath", None)
+
     if pid in product_ids:
         if not quiet and not typer.prompt(
             f"Product id {pid} already exists. Overwrite? (y/n)\n", type=bool
@@ -90,16 +102,13 @@ def add(
     with products_yaml_path.open("w") as f:
         yaml.dump(config, f)
 
-    # if we got auth info, place it in coasti-level secrets
-    secrets_path = products_yaml_path.parent / "secrets" / f"vcs_auth_{pid}"
-    if answers["vcs_auth_type"] == "Auth Token":
-        secrets_path.write_text(answers["vcs_auth_token"])
-    elif answers["vcs_auth_type"] == "SSH Key":
-        secrets_path.write_text(answers["vcs_auth_sshkeypath"])
-
     log.info(f"Updated {pid} in {str(products_yaml_path)}")
 
-    if answers["install_after_add"]:
+    if typer.prompt(
+        f"Do you want to install {pid} now? (Y/n)",
+        type=bool,
+        default=True,
+    ):
         install(pid)
 
 
@@ -151,16 +160,35 @@ def install(
 
     log.debug(f"Using copier copy on {pid} : {details}")
 
+    # -------------------------------- Install ------------------------------- #
     with copier_git_injection(
         https_token=vcs_auth if vcs_auth_type == "Auth Token" else None,
         ssh_key_path=vcs_auth if vcs_auth_type == "SSH Key" else None,
     ):
-        copier.run_copy(
-            src_path=src_path,
-            dst_path=dst_path,
-            vcs_ref=vcs_ref,
-            unsafe=True,
-        )
+        try:
+            copier.run_copy(
+                src_path=src_path,
+                dst_path=dst_path,
+                vcs_ref=vcs_ref,
+                unsafe=True,
+            )
+        except copier.ProcessExecutionError as e:
+            log.error(
+                f"Failed to install {pid}. Check your connection and authentication."
+            )
+            log.info(e)
+            raise typer.Exit(code=1)
+
+    # --------------------------------- links -------------------------------- #
+
+    for part in ["config", "config/secrets", "data", "logs"]:
+        if (dst := dst_path / part).exists():
+            src = coasti_root / part / pid
+            log.debug(f"Creating symlink {str(src)} -> {str(dst)}")
+            try:
+                src.symlink_to(dst)
+            except FileExistsError:
+                pass
 
 
 def get_and_check_products_yaml():
