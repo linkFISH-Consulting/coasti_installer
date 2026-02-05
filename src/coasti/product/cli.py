@@ -14,7 +14,7 @@ import typer
 from ruamel.yaml import YAML, CommentedMap
 
 from ..logger import log, setup_logging
-from .answer import prompt_like_copier_from_template, prompt_single
+from ..prompt import prompt_like_copier_from_template, prompt_single
 
 yaml = YAML()
 app = typer.Typer()

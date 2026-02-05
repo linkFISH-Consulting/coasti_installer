@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from pathlib import Path
+from typing import Any, TypeVar, Union, overload
 
-import click
 from copier import JSONSerializable, Phase, Worker
 from copier._types import MISSING
 from copier._user_data import AnswersMap, Question
@@ -208,7 +208,7 @@ def _ask_questions_like_copier(
 
 T = TypeVar("T")
 
-def prompt_single(help: str, type: T | None = None, **kwargs) -> T:
+def prompt_single(help: str, type: type[T] | None = None, **kwargs) -> T:
     """
     Ask a single questions, directly returning the answered value.
 
@@ -224,11 +224,21 @@ def prompt_single(help: str, type: T | None = None, **kwargs) -> T:
             kwargs["type"] = type.__name__
         elif isinstance(type, str):
             kwargs["type"] = type
+        elif type is Path:
+            kwargs["type"] = "str"
+            if "default" in kwargs:
+                kwargs["default"] = str(kwargs["default"])
+            # TODO: add path logic via typer/click
         else:
-            raise NotImplementedError(f"Unsupported type: {type}")
+            raise NotImplementedError
 
-    answers = prompt_like_copier({"temp" : dict(help = help, **kwargs)})
-    return answers.answers["temp"]
+    res = prompt_like_copier({"temp" : dict(help = help, **kwargs)}).answers["temp"]
+
+    if type is Path:
+        res = Path(res)
+    elif type in (bool, int, float, str):
+        res = type(res)
+    return res # type: ignore # FIXME
 
 
 # -------------------------- From existing yaml file ------------------------- #

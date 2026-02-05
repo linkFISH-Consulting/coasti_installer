@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------ #
 # @Author:        F. Paul Spitzner
 # @Created:       2026-01-26 13:41:54
-# @Last Modified: 2026-02-03 12:11:03
+# @Last Modified: 2026-02-05 13:38:40
 # ------------------------------------------------------------------------------ #
 
 """
@@ -21,6 +21,8 @@ from typing import Annotated, cast
 
 import copier
 import typer
+
+from coasti.prompt import prompt_single
 
 from .logger import log, setup_logging
 
@@ -68,13 +70,8 @@ def init(
         setup_logging("DEBUG")
 
     if coasti_dir is None:
-        coasti_dir = cast(
-            Path,
-            typer.prompt(
-                "Where to place coasti?\n",
-                type=Path,
-                default=Path.cwd() / "coasti",
-            ),
+        coasti_dir = prompt_single(
+            "Where to place coasti?", type=Path, default=Path.cwd() / "coasti"
         )
 
     # even when updating, we need the repo version on disk.
@@ -87,7 +84,7 @@ def init(
             copier.run_update(
                 dst_path=coasti_dir,
                 answers_file="./config/install_answers.yml",
-                data={"coasti_version" : metadata.version("coasti")},
+                data={"coasti_version": metadata.version("coasti")},
                 vcs_ref=vcs_ref,
                 unsafe=True,
                 overwrite=True,
