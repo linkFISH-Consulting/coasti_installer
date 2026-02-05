@@ -1,5 +1,2 @@
-from .answer import get_answers_from_template
-from .product import Product
 from .cli import app
-
-__all__ = ["get_answers_from_template", "Product", "app"]
+from .prompt import prompt_like_copier_from_template, prompt_like_copier, prompt_single

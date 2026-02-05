@@ -14,7 +14,7 @@ import typer
 from ruamel.yaml import YAML, CommentedMap
 
 from ..logger import log, setup_logging
-from .answer import get_answers_from_template
+from .answer import prompt_like_copier_from_template, prompt_single
 
 yaml = YAML()
 app = typer.Typer()
@@ -61,7 +61,7 @@ def add(
     products_yaml_path, config = get_and_check_products_yaml()
 
     with resources.path("coasti", "") as module_path:
-        answers = get_answers_from_template(
+        p_res = prompt_like_copier_from_template(
             src_path=str(module_path / "product" / "questions"),
             data={"vcs_repo": vcs_repo},
             defaults=quiet,
@@ -71,44 +71,33 @@ def add(
     products = config.get("products") or []
     config["products"] = products
     product_ids = [p.get("id") for p in products if p.get("id")]
-    pid = answers["id"]
+    pid = p_res.answers["id"]
 
     # if we got auth info, place it in coasti-level secrets
     secrets_path = products_yaml_path.parent / "secrets" / f"vcs_auth_{pid}"
-    if answers["vcs_auth_type"] == "Auth Token":
-        secrets_path.write_text(answers["vcs_auth_token"])
-    elif answers["vcs_auth_type"] == "SSH Key":
-        secrets_path.write_text(answers["vcs_auth_sshkeypath"])
-
-    # remove secret and temporary answers
-    answers.pop("vcs_auth_token", None)
-    answers.pop("vcs_auth_sshkeypath", None)
+    if p_res.answers.get("vcs_auth_type") == "Auth Token":
+        secrets_path.write_text(p_res.answers.get("vcs_auth_token", ""))
+    elif p_res.answers.get("vcs_auth_type") == "SSH Key":
+        secrets_path.write_text(p_res.answers.get("vcs_auth_sshkeypath", ""))
 
     if pid in product_ids:
-        if not quiet and not typer.prompt(
-            f"Product id {pid} already exists. Overwrite? (y/n)\n", type=bool
+        if not quiet and not prompt_single(
+            f"Product id {pid} already exists. Overwrite?", type=bool, default=True
         ):
             log.info("Exiting")
             raise typer.Exit(code=1)
 
         product: CommentedMap = [p for p in products if p["id"] == pid][0]
-        product.clear()
-        # to clear or not to clear?
-        # dont want to loose comments but want to loose obsolete keys.
-        product.update(answers)
+        product.update(p_res.answers_to_remember)
     else:
-        config["products"].append(answers)
+        config["products"].append(p_res.answers_to_remember)
 
     with products_yaml_path.open("w") as f:
         yaml.dump(config, f)
 
     log.info(f"Updated {pid} in {str(products_yaml_path)}")
 
-    if typer.prompt(
-        f"Do you want to install {pid} now? (Y/n)",
-        type=bool,
-        default=True,
-    ):
+    if prompt_single(f"Do you want to install {pid} now?", type=bool, default=True):
         install(pid)
 
 
