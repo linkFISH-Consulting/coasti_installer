@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypeVar, Union, overload
+from typing import Any, Generic, TypeVar, cast
 
 from copier import JSONSerializable, Phase, Worker
 from copier._types import MISSING
@@ -19,14 +19,16 @@ from pydantic import ValidationError
 
 # -------------------------- From dict of questions -------------------------- #
 
+T = TypeVar("T")
+TD = TypeVar("TD", bound=Mapping[str, Any])
 
 @dataclass(frozen=True)
-class PromptResponse:
+class PromptResponse(Generic[TD]):
     answers_map: AnswersMap
     questions: Mapping[str, dict[str, Any]]
 
     @property
-    def answers(self):
+    def answers(self) -> TD:
         """Answers, including hidden and secret ones."""
         out: dict[str, Any] = {}
         for k, v in self.answers_map.combined.items():
@@ -40,10 +42,10 @@ class PromptResponse:
             ):
                 continue
             out[str(k)] = v
-        return out
+        return cast(TD, out)
 
     @property
-    def answers_to_remember(self):
+    def answers_to_remember(self) -> TD:
         """Answers that copier would remember (no secrets, when=true)."""
         out: dict[str, Any] = {}
         for k, v in self.answers.items():
@@ -52,7 +54,7 @@ class PromptResponse:
             if str(k) in self.secret:
                 continue
             out[str(k)] = v
-        return out
+        return cast(TD, out)
 
     @property
     def secret(self):
@@ -206,7 +208,6 @@ def _ask_questions_like_copier(
 
     return answers
 
-T = TypeVar("T")
 
 def prompt_single(help: str, type: type[T] | None = None, **kwargs) -> T:
     """
