@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import copier
 import copier._vcs as copier_vcs
@@ -100,11 +100,11 @@ def add(
 @app.command()
 def install(
     pid: Annotated[
-        str,
+        str | None,
         typer.Argument(
             help="Id of the product.",
         ),
-    ],
+    ] = None,
     verbose: Annotated[
         bool,
         typer.Option(
@@ -119,11 +119,44 @@ def install(
 
     Uses copier, git and details from config/products.yml
     """
+    _install_or_update("install", pid, verbose)
 
+@app.command()
+def update(
+    pid: Annotated[
+        str | None,
+        typer.Argument(
+            help="Id of the product.",
+        ),
+    ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "-v",
+            "--verbose",
+            help="Enable debug logging.",
+        ),
+    ] = False,
+):
+    """
+    Update an installed product.
+
+    Uses copier, git and details from config/products.yml
+    """
+    _install_or_update("update", pid, verbose)
+
+def _install_or_update(
+    method : Literal["update", "install"], pid: str | None, verbose: bool = True
+):
     if verbose:
         setup_logging("DEBUG")
 
     config = ProductsConfig()
+    if pid is None:
+        pid = prompt_single(
+            "Select the product to install:", type=str, choices=config.product_ids
+        )
+
     if pid not in config.product_ids:
         log.error(
             f"{pid} not found in products. Available for install:\n"
@@ -131,10 +164,19 @@ def install(
         )
         raise typer.Exit(code=1)
 
-    product = config.get_product(pid)
-    product.install()
-
-
-
-
-
+    try:
+        product = config.get_product(pid)
+        if method == "install":
+            product.install()
+        elif method == "update":
+            product.update()
+        else:
+            raise NotImplementedError
+    except copier.ProcessExecutionError as e:
+        log.error(f"Failed to {method} {pid}. Check your connection and authentication.")
+        log.info(e)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        # use typer to exit and avoid stack trace (which might contain auth info).
+        log.error(e)
+        raise typer.Exit(code=1)

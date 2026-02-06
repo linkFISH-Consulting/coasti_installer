@@ -159,20 +159,14 @@ class Product:
             https_token=self.vcs_auth_token,
             ssh_key_path=self.vcs_auth_sshkeypath,
         ):
-            try:
-                log.debug(f"Using copier to install {self.id}")
-                copier.run_copy(
-                    src_path=self.details["vcs_repo"],
-                    dst_path=self.dst_path,
-                    vcs_ref=self.details["vcs_ref"],
-                    unsafe=True,
-                )
-            except copier.ProcessExecutionError as e:
-                log.error(
-                    f"Failed to install {self.id}. "
-                    "Check your connection and authentication."
-                )
-                raise e
+
+            log.info(f"Using copier to install {self.id}. Downloading...")
+            copier.run_copy(
+                src_path=self.details["vcs_repo"],
+                dst_path=self.dst_path,
+                vcs_ref=self.details["vcs_ref"],
+                unsafe=True,
+            )
 
         self._create_symlinks()
 
@@ -187,20 +181,14 @@ class Product:
             https_token=self.vcs_auth_token,
             ssh_key_path=self.vcs_auth_sshkeypath,
         ):
-            try:
-                log.debug(f"Using copier to update {self.id}")
-                copier.run_update(
-                    dst_path=self.dst_path,
-                    unsafe=True,
-                )
-            except copier.ProcessExecutionError as e:
-                log.error(
-                    f"Failed to update {self.id}. "
-                    "Check your connection and authentication."
-                )
-                raise e
+            log.info(f"Using copier to update {self.id}. Downloading...")
+            copier.run_update(
+                dst_path=self.dst_path,
+                unsafe=True,
+            )
 
     def _create_symlinks(self):
+        log.info(f"Creating symlinks for {self.id}")
         for part in ["config", "config/secrets", "data", "logs"]:
             if (dst := self.dst_path / part).exists():
                 src = self.coasti_base_dir / part / self.id

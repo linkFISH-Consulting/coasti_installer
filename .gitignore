@@ -19,3 +19,6 @@ crash.*.log
 *.auto.tfvars
 
 .vscode
+
+# exclude template bundles to keep git small - we still package and ship it
+src/coasti/_bundles/*
