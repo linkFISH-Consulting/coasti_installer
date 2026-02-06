@@ -26,16 +26,15 @@ app = typer.Typer()
 def list():
     """List installed products."""
 
-    _, config = get_and_check_products_yaml()
-    products = config.get("products") or []
+    config = ProductsConfig()
 
     typer.echo(typer.style("products:", fg=typer.colors.BRIGHT_BLACK))
-    for p in products:
+    for p in config.products:
         typer.echo(
-            typer.style(f"- name: {p.get('name')}", fg=typer.colors.WHITE, bold=True)
+            typer.style(f"- name: {p['id']}", fg=typer.colors.WHITE, bold=True)
         )
         for key, value in p.items():
-            if key != "name":
+            if key != "id":
                 typer.echo(
                     typer.style(f"  {key}: {value}", fg=typer.colors.BRIGHT_BLACK)
                 )

@@ -1,6 +1,9 @@
 # Contributing
 
 ## Build and upload to pypi
+
+- Add a git tag with the current version number, otherwise the build template will not be versioned!
+
 ```bash
 # create the git template bundle that we need to ship
 python ./src/create_template_bundle.py
