@@ -184,6 +184,7 @@ class Product:
             log.info(f"Using copier to update {self.id}. Downloading...")
             copier.run_update(
                 dst_path=self.dst_path,
+                answers_file="config/install_answers.yml",
                 unsafe=True,
             )
 
