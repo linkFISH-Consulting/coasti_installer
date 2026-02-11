@@ -93,7 +93,7 @@ class Product:
 
     def __init__(self, coasti_base_dir: Path, details: ProductDetails) -> None:
         self.details = details
-        self.coasti_base_dir = coasti_base_dir
+        self.coasti_base_dir = coasti_base_dir.absolute()
 
     @property
     def id(self):
@@ -105,7 +105,7 @@ class Product:
 
     @property
     def dst_path(self):
-        return Path(self.details["dst_path"])
+        return Path(self.details["dst_path"]).absolute()
 
     @property
     def vcs_auth_token(self):

@@ -11,14 +11,14 @@ python ./src/create_template_bundle.py
 uv build
 
 # publish on pypi test
-export UV_TEST_PYPI_TOKEN="pypi-XXXXXXXXXXXXXXXXXXXXXXXX"
+export UV_PUBLISH_TOKEN="pypi-XXXXXXXXXXXXXXXXXXXXXXXX"
 uv publish --index-url https://test.pypi.org/legacy/
 
 # test it works
 uv pip install --index-url https://test.pypi.org/simple/ --no-deps coasti
 
 # final publish to pypi
-export UV_PYPI_TOKEN="pypi-XXXXXXXXXXXXXXXXXXXXXXXX"
+export UV_PUBLISH_TOKEN="pypi-XXXXXXXXXXXXXXXXXXXXXXXX"
 uv publish
 ```
 
