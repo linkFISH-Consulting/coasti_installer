@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------ #
 # @Author:        F. Paul Spitzner
 # @Created:       2026-01-26 13:41:54
-# @Last Modified: 2026-02-05 13:38:40
+# @Last Modified: 2026-02-11 11:31:07
 # ------------------------------------------------------------------------------ #
 
 """
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import stat
 import subprocess
 from importlib import metadata, resources
 from pathlib import Path
@@ -123,6 +124,7 @@ def materialize_template_repo() -> Path:
     repo_dir = cache_dir / "repo"
     if repo_dir.exists():
         log.debug("Removing old template repo.")
+        _ensure_writable(repo_dir)
         shutil.rmtree(repo_dir)
         # lets keep this simple for now. we can later add checks to avoid copying.
         # however, requires version checks
@@ -137,3 +139,11 @@ def materialize_template_repo() -> Path:
         )
 
     return repo_dir
+
+def _ensure_writable(path: Path) -> None:
+    """Workaround for windows, where rmtree throws an error on .git folders."""
+    for root, dirs, files in os.walk(path, topdown=True):
+        for d in dirs:
+            (Path(root) / d).chmod(stat.S_IWRITE | stat.S_IRWXU)
+        for f in files:
+            (Path(root) / f).chmod(stat.S_IWRITE)

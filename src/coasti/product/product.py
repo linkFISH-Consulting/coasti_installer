@@ -51,7 +51,7 @@ class ProductsConfig:
     def get_product_details(self, pid):
         return [p for p in self.products if p.get("id") == pid][0]
 
-    def get_product(self, pid : str):
+    def get_product(self, pid: str):
         details = self.get_product_details(pid)
         return Product(details=details, coasti_base_dir=self.coasti_base_dir)
 
@@ -159,7 +159,6 @@ class Product:
             https_token=self.vcs_auth_token,
             ssh_key_path=self.vcs_auth_sshkeypath,
         ):
-
             log.info(f"Using copier to install {self.id}. Downloading...")
             copier.run_copy(
                 src_path=self.details["vcs_repo"],
@@ -198,6 +197,16 @@ class Product:
                     log.debug(f"Created symlink {str(src)} -> {str(dst)}")
                 except FileExistsError:
                     log.debug(f"Link target already exists ({str(dst)})")
+                except OSError as e:
+                    if sys.platform == "win32":
+                        log.info(
+                            "Cannot create symlinks on Windows "
+                            f"without admin permissions ({str(dst)})"
+                        )
+                    else:
+                        log.error(e)
+                except Exception as e:
+                    log.error(e)
 
 
 class ProductDetails(TypedDict):
