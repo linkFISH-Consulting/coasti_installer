@@ -32,7 +32,7 @@ dev = [
 lint = ["ruff>=0.14.14"]
 typed = ["mypy>=1.19.1"]
 docs = []
-test = ["pytest>=9.0.2"]
+test = ["pytest>=9.0.2", "pytest-cov>=7.0.0"]
 
 [build-system]
 requires = ["uv_build>=0.9.18,<0.10.0"]
@@ -44,8 +44,7 @@ module-root = "src"
 include = ["coasti/_bundles/*.bundle"]
 
 [tool.ruff]
-exclude = ["*tests*"]
-include = ["pyproject.toml", "coasti/*.py"]
+include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -59,6 +58,9 @@ select = [
     "PTH", # Use pathlib instead of os.path
     "W",   # pycodestyle
 ]
+
+[tool.pytest.ini_options]
+addopts = "--cov=coasti"
 
 [tool.mypy]
 check_untyped_defs = true

@@ -13,7 +13,7 @@ import copier._vcs as copier_vcs
 import typer
 from ruamel.yaml import YAML, CommentedMap
 
-from coasti.logger import log, setup_logging
+from coasti.logger import log
 from coasti.prompt import prompt_like_copier_from_template, prompt_single
 
 from .product import ProductsConfig
