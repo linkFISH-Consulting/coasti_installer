@@ -32,7 +32,7 @@ class ProductsConfig:
         self.coasti_base_dir = coast_base_dir or Path(
             os.getenv("COASTI_BASE_DIR", Path.cwd())
         )
-        _products_config = None
+        self._products_config = None
 
     @property
     def products_config(self) -> CommentedMap:

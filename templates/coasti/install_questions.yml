@@ -19,14 +19,3 @@ vcs_online_repo:
     type: str
     help: What is the url of the remote repo?
     when: "{{ vcs_repo_type == 'remote' }}"
-
-
-sample_pass:
-    help: "Sample Secret, auto-generated. (random 64 char alphanumeric)"
-    secret: true
-    default: "{{ 64|ans_random|hash('sha512') }}"
-    # TODO: we would like to check if the file already exists in the destination
-    # but the requires file-io which is not a default jinja2 filter.
-    # thus, easier to do this programmatically from the python side.
-    # likely, each content package should define something like `sample_pass_file`
-    # so we can check easier.
