@@ -1,20 +1,16 @@
 import os
-import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
-from importlib import resources
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Iterable, Mapping
+from typing import TYPE_CHECKING
 
-from ruamel.yaml import YAML, CommentedMap
+from ruamel.yaml import YAML
 
 yaml = YAML()
 
 if TYPE_CHECKING:
-    from coasti.product.product import ProductDetails
+    pass
+
 
 class CoastiConfig:
-
     def __init__(self) -> None:
         self.products_config = None
 
@@ -23,7 +19,6 @@ class CoastiConfig:
         """Current projects coasti base directory."""
         coasti_root = Path(os.getenv("COASTI_BASE_DIR", Path.cwd()))
         return coasti_root
-
 
 
 _config: CoastiConfig = None  # type: ignore

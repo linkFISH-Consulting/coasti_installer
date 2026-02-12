@@ -5,10 +5,17 @@
 - Add a git tag with the current version number, otherwise the build template will not be versioned!
 
 ```bash
-# create the git template bundle that we need to ship
+
+# 0) create a tag on your local git repo (needed for copier versioning)
+# this is a manual step for now
+
+# 1) create the git template bundle to ship
 python ./src/create_template_bundle.py
 
+# 2) build the package
 uv build
+
+# 3) publish
 
 # publish on pypi test
 export UV_PUBLISH_TOKEN="pypi-XXXXXXXXXXXXXXXXXXXXXXXX"

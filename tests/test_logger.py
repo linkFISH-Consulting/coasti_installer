@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -9,12 +9,12 @@ from coasti.logger import log, setup_logging_handler
 @pytest.mark.parametrize(
     "verbose_level,expected_level",
     [
-        (0, logging.WARNING),
-        (1, logging.INFO),
+        (0, logging.INFO),
+        (1, logging.DEBUG),
         (2, logging.DEBUG),
         (3, logging.DEBUG),
-        (4, logging.WARNING),  # Default for out-of-range
-        (-1, logging.WARNING),  # Default for negative
+        (4, logging.INFO),  # Default for out-of-range
+        (-1, logging.INFO),  # Default for negative
     ],
 )
 def test_setup_logging_handler_level_mapping(verbose_level, expected_level):

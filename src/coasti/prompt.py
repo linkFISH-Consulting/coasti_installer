@@ -22,6 +22,7 @@ from pydantic import ValidationError
 T = TypeVar("T")
 TD = TypeVar("TD", bound=Mapping[str, Any])
 
+
 @dataclass(frozen=True)
 class PromptResponse(Generic[TD]):
     answers_map: AnswersMap
@@ -233,13 +234,13 @@ def prompt_single(help: str, type: type[T] | None = None, **kwargs) -> T:
         else:
             raise NotImplementedError
 
-    res = prompt_like_copier({"temp" : dict(help = help, **kwargs)}).answers["temp"]
+    res = prompt_like_copier({"temp": dict(help=help, **kwargs)}).answers["temp"]
 
     if type is Path:
         res = Path(res)
     elif type in (bool, int, float, str):
         res = type(res)
-    return res # type: ignore # FIXME
+    return res  # type: ignore # FIXME
 
 
 # -------------------------- From existing yaml file ------------------------- #

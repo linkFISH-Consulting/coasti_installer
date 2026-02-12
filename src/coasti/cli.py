@@ -2,7 +2,7 @@ from typing import Annotated
 
 import typer
 
-from coasti.logger import setup_logging_handler
+from coasti.logger import log, setup_logging_handler
 
 from .init import app as init_app
 from .product import app as product_app
@@ -25,11 +25,13 @@ def main(
     """Coasti Installer - Initialize projects and install products."""
     setup_logging_handler(verbose)
 
+    app.pretty_exceptions_short = False
+
 
 @app.command()
 def version():
     """Shows the version of the coasti installer."""
-    typer.echo(f"Coasti version {get_version()}")
+    log.info(f"Coasti version {get_version()}")
 
 
 def get_version():

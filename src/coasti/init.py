@@ -12,7 +12,7 @@ import stat
 import subprocess
 from importlib import metadata, resources
 from pathlib import Path
-from typing import Annotated, cast
+from typing import Annotated
 
 import copier
 import typer
