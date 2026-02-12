@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------ #
 # @Author:        F. Paul Spitzner
 # @Created:       2026-01-26 13:41:54
-# @Last Modified: 2026-02-11 11:31:07
+# @Last Modified: 2026-02-12 09:28:09
 # ------------------------------------------------------------------------------ #
 
 """
@@ -55,20 +55,9 @@ def init(
             "--vcs-ref",
             help="Specify the VCS tag/commit of the coasti template (dev option).",
         ),
-    ] = None,
-    verbose: Annotated[
-        bool,
-        typer.Option(
-            "-v",
-            "--verbose",
-            help="Enable debug logging.",
-        ),
-    ] = False,
+    ] = None
 ):
     """Initialize a coasti workspace"""
-
-    if verbose:
-        setup_logging("DEBUG")
 
     if coasti_dir is None:
         coasti_dir = prompt_single(

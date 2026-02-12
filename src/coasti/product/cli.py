@@ -24,15 +24,13 @@ app = typer.Typer()
 
 @app.command()
 def list():
-    """List installed products."""
+    """List installed products"""
 
     config = ProductsConfig()
 
     typer.echo(typer.style("products:", fg=typer.colors.BRIGHT_BLACK))
     for p in config.products:
-        typer.echo(
-            typer.style(f"- name: {p['id']}", fg=typer.colors.WHITE, bold=True)
-        )
+        typer.echo(typer.style(f"- name: {p['id']}", fg=typer.colors.WHITE, bold=True))
         for key, value in p.items():
             if key != "id":
                 typer.echo(
@@ -56,19 +54,8 @@ def add(
             help="Don't ask questions, use all defaults, and overwrite.",
         ),
     ] = False,
-    verbose: Annotated[
-        bool,
-        typer.Option(
-            "-v",
-            "--verbose",
-            help="Enable debug logging.",
-        ),
-    ] = False,
 ):
-    """Add a product to coasti."""
-
-    if verbose:
-        setup_logging("DEBUG")
+    """Add a product to coasti"""
 
     config = ProductsConfig()
 
@@ -104,21 +91,14 @@ def install(
             help="Id of the product.",
         ),
     ] = None,
-    verbose: Annotated[
-        bool,
-        typer.Option(
-            "-v",
-            "--verbose",
-            help="Enable debug logging.",
-        ),
-    ] = False,
 ):
     """
-    Fetch resources for a product that has already been added.
+    Fetch resources for a product that has already been added
 
     Uses copier, git and details from config/products.yml
     """
-    _install_or_update("install", pid, verbose)
+    _install_or_update("install", pid)
+
 
 @app.command()
 def update(
@@ -128,37 +108,28 @@ def update(
             help="Id of the product.",
         ),
     ] = None,
-    verbose: Annotated[
-        bool,
-        typer.Option(
-            "-v",
-            "--verbose",
-            help="Enable debug logging.",
-        ),
-    ] = False,
 ):
     """
-    Update an installed product.
+    Update an installed product
 
     Uses copier, git and details from config/products.yml
     """
-    _install_or_update("update", pid, verbose)
+    _install_or_update("update", pid)
+
 
 def _install_or_update(
-    method : Literal["update", "install"], pid: str | None, verbose: bool = True
+    method: Literal["update", "install"],
+    pid: str | None,
 ):
-    if verbose:
-        setup_logging("DEBUG")
-
     config = ProductsConfig()
     if pid is None:
         pid = prompt_single(
-            "Select the product to install:", type=str, choices=config.product_ids
+            f"Select the product to {method}:", type=str, choices=config.product_ids
         )
 
     if pid not in config.product_ids:
         log.error(
-            f"{pid} not found in products. Available for install:\n"
+            f"{pid} not found in products. Available products are:\n"
             f"  {config.product_ids}"
         )
         raise typer.Exit(code=1)
@@ -172,7 +143,9 @@ def _install_or_update(
         else:
             raise NotImplementedError
     except copier.ProcessExecutionError as e:
-        log.error(f"Failed to {method} {pid}. Check your connection and authentication.")
+        log.error(
+            f"Failed to {method} {pid}. Check your connection and authentication."
+        )
         log.info(e)
         raise typer.Exit(code=1)
     except Exception as e:

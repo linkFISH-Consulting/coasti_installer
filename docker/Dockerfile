@@ -10,6 +10,7 @@ ENV UV_PYTHON_DOWNLOADS=0
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     git \
+    ssh \
     vim \
     nano
 
