@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict, cast
 
 import copier
 import copier._vcs as copier_vcs
@@ -19,14 +19,26 @@ yaml = YAML()
 
 
 class ProductsConfig:
+    """
+    Manage products configuration.
+
+    Convenient access to config/products.yml and writing into it
+    """
+
     coasti_base_dir: Path
-    products_config: CommentedMap
+    _products_config: CommentedMap | None
 
     def __init__(self, coast_base_dir: Path | None = None) -> None:
         self.coasti_base_dir = coast_base_dir or Path(
             os.getenv("COASTI_BASE_DIR", Path.cwd())
         )
-        self._load_products_config()
+        _products_config = None
+
+    @property
+    def products_config(self) -> CommentedMap:
+        if self._products_config is None:
+            self._products_config = self._load_products_config()
+        return cast(CommentedMap, self._products_config)
 
     @property
     def products_yaml_path(self):
@@ -63,7 +75,6 @@ class ProductsConfig:
             )
         # this is a list in yaml, but it might not have any entries, and be none.
         config["products"] = config.get("products") or []
-        self.products_config = config
         return config
 
     def save_products_config(self):
@@ -75,7 +86,6 @@ class ProductsConfig:
         Insert or update a product to our yaml based on a questionaire.
         The `.answers` in the PromptResponse should be ProductDetails.
         """
-
         p = Product(details=p_res.answers, coasti_base_dir=self.coasti_base_dir)
         p.save_secrets()
 
@@ -88,6 +98,13 @@ class ProductsConfig:
 
 
 class Product:
+    """
+    Thin wrapper around ProductDetails with functions to install.
+
+    ProductDetails are a set of yaml variables, that is consistent for each
+    list item in config/products.yml.
+    """
+
     details: ProductDetails
     coasti_base_dir: Path
 
@@ -259,9 +276,13 @@ def copier_git_injection(
             # Some git flows require this to force askpass in non-tty contexts:
 
         elif ssh_key_path:
-            extra_env["GIT_SSH_COMMAND"] = (
-                f"ssh -i {ssh_key_path} -o IdentitiesOnly=yes"
-            )
+            if Path(ssh_key_path).is_file():
+                extra_env["GIT_SSH_COMMAND"] = (
+                    f"ssh -i {ssh_key_path} -o IdentitiesOnly=yes"
+                )
+            else:
+                # avoid Prompt injection, skip ssh overwrite
+                log.warning(f"'{ssh_key_path}' is not a valid path for an ssh key.")
 
         def patched_get_git():
             git = original_get_git()
