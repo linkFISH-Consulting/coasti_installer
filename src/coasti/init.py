@@ -1,9 +1,3 @@
-# ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Created:       2026-01-26 13:41:54
-# @Last Modified: 2026-02-12 09:28:09
-# ------------------------------------------------------------------------------ #
-
 """
 `coasti init`
 
@@ -18,14 +12,14 @@ import stat
 import subprocess
 from importlib import metadata, resources
 from pathlib import Path
-from typing import Annotated, cast
+from typing import Annotated
 
 import copier
 import typer
 
 from coasti.prompt import prompt_single
 
-from .logger import log, setup_logging
+from .logger import log
 
 app = typer.Typer()
 
@@ -55,7 +49,7 @@ def init(
             "--vcs-ref",
             help="Specify the VCS tag/commit of the coasti template (dev option).",
         ),
-    ] = None
+    ] = None,
 ):
     """Initialize a coasti workspace"""
 
@@ -128,6 +122,7 @@ def materialize_template_repo() -> Path:
         )
 
     return repo_dir
+
 
 def _ensure_writable(path: Path) -> None:
     """Workaround for windows, where rmtree throws an error on .git folders."""

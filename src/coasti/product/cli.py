@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-import os
-import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
 from importlib import resources
-from pathlib import Path
 from typing import Annotated, Literal
 
 import copier
-import copier._vcs as copier_vcs
 import typer
-from ruamel.yaml import YAML, CommentedMap
+from ruamel.yaml import YAML
 
-from coasti.logger import log, setup_logging
+from coasti.logger import log
 from coasti.prompt import prompt_like_copier_from_template, prompt_single
 
 from .product import ProductsConfig

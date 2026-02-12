@@ -6,6 +6,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUT = REPO_ROOT / "src" / "coasti" / "_bundles" / "template-repo.bundle"
 
+
 def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     print(REPO_ROOT)
@@ -19,6 +20,7 @@ def main() -> None:
     print("List of git heads:")
     subprocess.check_call(["git", "bundle", "list-heads", str(OUT)])
     print(f"Wrote bundle to: {OUT}")
+
 
 if __name__ == "__main__":
     main()

@@ -1,8 +1,8 @@
-import sys
+from typing import Annotated
 
 import typer
 
-from coasti.logger import setup_logging
+from coasti.logger import log, setup_logging_handler
 
 from .init import app as init_app
 from .product import app as product_app
@@ -12,28 +12,26 @@ app = typer.Typer()
 
 @app.callback()
 def main(
-    verbose: bool = typer.Option(
-        False,
-        "-v",
-        "--verbose",
-        help="Enable debug logging.",
-    ),
-    version: bool = typer.Option(
-        False,
-        "--version",
-        help="Show version and exit.",
-        callback=lambda value: (
-            typer.echo(f"Coasti version {get_version()}"),
-            sys.exit(0)
-        )
-        if value
-        else None,
-        is_eager=True,
-    ),
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v, -vv, -vvv).",
+        ),
+    ] = 0,
 ):
     """Coasti Installer - Initialize projects and install products."""
-    if verbose:
-        setup_logging("DEBUG")
+    setup_logging_handler(verbose)
+
+    app.pretty_exceptions_short = False
+
+
+@app.command()
+def version():
+    """Shows the version of the coasti installer."""
+    log.info(f"Coasti version {get_version()}")
 
 
 def get_version():
