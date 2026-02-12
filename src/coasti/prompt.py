@@ -6,7 +6,7 @@ This gives a consistent style for the back-and-forth with the user.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generic, TypeVar, cast
@@ -25,6 +25,12 @@ TD = TypeVar("TD", bound=Mapping[str, Any])
 
 @dataclass(frozen=True)
 class PromptResponse(Generic[TD]):
+    """
+    Response for a questionary prompt.
+
+    Can be typed to restrict the expected answers, e.g. TD -> ProductDetails.
+    """
+
     answers_map: AnswersMap
     questions: Mapping[str, dict[str, Any]]
 
@@ -108,8 +114,8 @@ def _ask_questions_like_copier(
     questions_data: Mapping[str, dict[str, Any]],
 ) -> AnswersMap:
     # some variables for consistency with typer
-    init = {}
-    last = {}
+    init: MutableMapping[str, Any] = {}
+    last: MutableMapping[str, Any] = {}
     defaults = False
     skip_answered = False
 
@@ -239,7 +245,7 @@ def prompt_single(help: str, type: type[T] | None = None, **kwargs) -> T:
     if type is Path:
         res = Path(res)
     elif type in (bool, int, float, str):
-        res = type(res)
+        res = type(res)  # type: ignore
     return res  # type: ignore # FIXME
 
 
@@ -272,7 +278,7 @@ def prompt_like_copier_from_template(src_path: str, **kwargs) -> PromptResponse:
 
     with AnswerWorker(src_path=src_path, **kwargs) as worker:
         worker.get_answers()
-        answers = PromptResponse(
+        answers = PromptResponse[Any](
             questions=worker.template.questions_data,
             answers_map=worker.answers,
         )

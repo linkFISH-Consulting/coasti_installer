@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
-from typing import Literal, NotRequired, TypedDict, cast
+from typing import Any, Literal, NotRequired, TypedDict, cast
 
 import copier
 import copier._vcs as copier_vcs
@@ -260,7 +260,7 @@ def copier_git_injection(
     original_get_git = copier_vcs.get_git
 
     try:
-        extra_env = {}
+        extra_env: dict[str, Any] = {}
 
         if https_token:
             with resources.as_file(
@@ -284,7 +284,7 @@ def copier_git_injection(
                 # avoid Prompt injection, skip ssh overwrite
                 log.warning(f"'{ssh_key_path}' is not a valid path for an ssh key.")
 
-        def patched_get_git():
+        def patched_get_git(*args, **kwargs):
             git = original_get_git()
             # Attach env to the command object.
             # (Plumbum supports cmd.with_env(VAR=...))
