@@ -122,7 +122,7 @@ class Product:
 
     @property
     def dst_path(self):
-        return Path(self.details["dst_path"]).absolute()
+        return self.coasti_base_dir / self.details["dst_path"]
 
     @property
     def vcs_auth_token(self):
