@@ -5,11 +5,10 @@ from importlib import resources
 from typing import Annotated, Any, Literal
 
 import copier
-from rich import align
 import typer
-from ruamel.yaml import YAML
-from rich.table import Table
 from rich.console import Console
+from rich.table import Table
+from ruamel.yaml import YAML
 
 from coasti.logger import log
 from coasti.prompt import prompt_like_copier_from_template, prompt_single
@@ -31,8 +30,7 @@ def list():
 
     config = ProductsConfig()
     for p in config.products:
-        for idx, key in enumerate(p.keys()):
-            value = p[key]
+        for idx, (key, value) in enumerate(p.items()):
             table.add_row(
                 p["id"] if idx == 0 else "",
                 key,
