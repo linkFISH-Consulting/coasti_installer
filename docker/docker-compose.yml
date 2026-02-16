@@ -1,0 +1,9 @@
+services:
+    coasti-installer:
+        container_name: coasti-installer
+        hostname: coasti-installer
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile
+        volumes:
+            - ../:/app

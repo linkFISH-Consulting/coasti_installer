@@ -1,0 +1,47 @@
+from typing import Annotated
+
+import typer
+
+from coasti.logger import log, setup_logging_handler
+
+from .init import app as init_app
+from .product import app as product_app
+
+app = typer.Typer()
+
+
+@app.callback()
+def main(
+    verbose: Annotated[
+        int,
+        typer.Option(
+            "--verbose",
+            "-v",
+            count=True,
+            help="Increase verbosity (-v, -vv, -vvv).",
+        ),
+    ] = 0,
+):
+    """Coasti Installer - Initialize projects and install products."""
+    setup_logging_handler(verbose)
+
+    app.pretty_exceptions_short = False
+
+
+@app.command()
+def version():
+    """Shows the version of the coasti installer."""
+    log.info(f"Coasti version {get_version()}")
+
+
+def get_version():
+    from importlib import metadata
+
+    try:
+        return metadata.version("coasti")
+    except metadata.PackageNotFoundError:
+        return "[not found] Use `uv sync` when developing!"
+
+
+app.add_typer(init_app)  # only one command so far
+app.add_typer(product_app, name="product", help="List, add or update products.")

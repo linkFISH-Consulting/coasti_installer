@@ -1,10 +1,8 @@
 target/
-logs/
 .venv
 .env
 .env-local
 .credentials
-data/
 __pycache__
 venv/
 *.egg-info/
@@ -20,3 +18,7 @@ crash.*.log
 .env
 *.auto.tfvars
 
+.vscode
+
+# exclude template bundles to keep git small - we still package and ship it
+src/coasti/_bundles/*

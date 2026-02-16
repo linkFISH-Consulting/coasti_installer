@@ -1,45 +1,41 @@
 # Coasti installer
 
 ## Get started
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
 ```bash
-pip install coasti
+# macOS, Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-mkdir new-repo
-cd new-repo
-
-# create a fresh local git repo
-git init
-git add .
-git commit -m "Initial commit from coasti template"
-
-# optional: link to an online repo
-git remote add origin https://github.com/yourusername/new-repo.git
-git push -u origin main
-
-# generic help:
-coasti --help
-
-# -> copy/edit config.example.yml to config.yml
-
-# translate config.yml to .env
-coasti parse
-
-# install products
-coasti install
-
-# create the dagster workspace
-coasti update-workspace-config-file
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
+Get the coasti installer. More details on uv install methods [here](https://docs.astral.sh/uv/getting-started/features/#tools)
 
-## Upload to pypi
 ```bash
-python3 -m pip install --upgrade build twine
+# as tool, global cli, creates an isolated environment
+uv tool install coasti
 
-# build the package
-python3 -m build
-twine check dist/*
-
-# upload, needs api token
-twine upload dist/*
+# as package, installes into the current environment
+uv pip install coasti
 ```
+
+Create a coasti project and install products
+
+```bash
+coasti init my_coasti_project
+cd my_coasti_project
+
+coasti product add "https://github.com/my_product_repo.git"
+```
+
+## Further reading
+
+- [Changelog](https://github.com/linkFISH-Consulting/coasti_installer/CHANGELOG.md)
+- [Docs](https://github.com/linkFISH-Consulting/coasti_installer/docs)
+    - [installer specs](https://github.com/linkFISH-Consulting/coasti_installer/docs/installer_specs.md)
+    - [contributing](https://github.com/linkFISH-Consulting/coasti_installer/docs/contribution_guide.md)
+    - [list of environment variables](https://github.com/linkFISH-Consulting/coasti_installer/docs/env_vars.md)
+    - [dev container](https://github.com/linkFISH-Consulting/coasti_installer/docker/README.md)

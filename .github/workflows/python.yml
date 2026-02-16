@@ -1,0 +1,83 @@
+name: Python checks
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint:
+    name: Check style with Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: |
+          uv sync --group lint
+      - name: Check style with Ruff
+        run: |
+          uv run ruff check --output-format=github .
+
+  format:
+    name: Check format with Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: |
+          uv sync --group lint
+      - name: Check format with Ruff
+        run: |
+          uv run ruff format --check --diff .
+
+  mypy:
+    name: Check type hints with mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: |
+          uv sync --group typed
+      - name: Check type hints with mypy
+        run: |
+          uv run mypy --show-error-codes --check-untyped-defs --config-file ./pyproject.toml ./
+
+  test:
+    name: Run tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    env:
+      PYTEST_ADDOPTS: "--color=yes"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          uv sync --group test
+      - name: Produce template bundle
+        run: |
+          python ./src/create_template_bundle.py
+      - name: Setup Git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          git config --global init.defaultBranch main
+      - name: Test with coverage
+        run: |
+          uv run pytest --cov=coasti --cov-report xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy -v
+
+  # TODO: Add docs build check once we build sphinx docs
