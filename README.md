@@ -33,8 +33,9 @@ coasti product add "https://github.com/my_product_repo.git"
 
 ## Further reading
 
-- [docs](docs)
-    - [installer specs](docs/installer_specs.md)
-    - [contributing](docs/contribution_guide.md)
-    - [list of environment variables](docs/env_vars.md)
-    - [dev container](docker/README.md)
+- [Changelog](https://github.com/linkFISH-Consulting/coasti_installer/CHANGELOG.md)
+- [Docs](https://github.com/linkFISH-Consulting/coasti_installer/docs)
+    - [installer specs](https://github.com/linkFISH-Consulting/coasti_installer/docs/installer_specs.md)
+    - [contributing](https://github.com/linkFISH-Consulting/coasti_installer/docs/contribution_guide.md)
+    - [list of environment variables](https://github.com/linkFISH-Consulting/coasti_installer/docs/env_vars.md)
+    - [dev container](https://github.com/linkFISH-Consulting/coasti_installer/docker/README.md)
