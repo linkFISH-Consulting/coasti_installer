@@ -68,8 +68,16 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group test
+      - name: Produce template bundle
+        run: |
+          python ./src/create_template_bundle.py
+      - name: Setup Git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          git config --global init.defaultBranch main
       - name: Test with coverage
         run: |
-          uv run pytest --cov=plistsync --cov-report xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy -v
+          uv run pytest --cov=coasti --cov-report xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy -v
 
   # TODO: Add docs build check once we build sphinx docs

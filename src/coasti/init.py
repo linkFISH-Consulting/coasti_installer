@@ -6,13 +6,14 @@ Initialize project structure.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import stat
 import subprocess
 from importlib import metadata, resources
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import copier
 import typer
@@ -50,8 +51,30 @@ def init(
             help="Specify the VCS tag/commit of the coasti template (dev option).",
         ),
     ] = None,
+    data: Annotated[
+        str | None,
+        typer.Option(
+            "--data",
+            help="Avoid prompts by providing answers as a JSON object like: "
+            ' \'{"vcs_repo_type": "skip"}\'',
+        ),
+    ] = None,
 ):
     """Initialize a coasti workspace"""
+
+    # Parse skip-prompt answers and internal variables for answers_file
+    extra_data: dict = {}
+    if data is not None:
+        try:
+            extra_data = json.loads(data)
+        except json.JSONDecodeError as e:
+            log.error(f"Invalid JSON in --data: {e}")
+            log.error(f"Input was: {data!r}")
+            raise typer.Exit(code=1)
+
+    copier_data: dict[str, Any] = {}
+    copier_data.update(extra_data)
+    copier_data.update({"coasti_version": metadata.version("coasti")})
 
     if coasti_dir is None:
         coasti_dir = prompt_single(
@@ -68,7 +91,7 @@ def init(
             copier.run_update(
                 dst_path=coasti_dir,
                 answers_file="./config/install_answers.yml",
-                data={"coasti_version": metadata.version("coasti")},
+                data=copier_data,
                 vcs_ref=vcs_ref,
                 unsafe=True,
                 overwrite=True,
@@ -82,7 +105,7 @@ def init(
                 src_path=str(template_repo),
                 dst_path=coasti_dir,
                 answers_file="./config/install_answers.yml",
-                data={"coasti_version": metadata.version("coasti")},
+                data=copier_data,
                 vcs_ref=vcs_ref,
                 unsafe=True,
             )

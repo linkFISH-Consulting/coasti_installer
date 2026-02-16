@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 from importlib import resources
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import copier
 import typer
@@ -48,15 +49,43 @@ def add(
             help="Don't ask questions, use all defaults, and overwrite.",
         ),
     ] = False,
+    data: Annotated[
+        str | None,
+        typer.Option(
+            "--data",
+            help="Avoid prompts by providing answers as a JSON object like: "
+            ' \'{"vcs_ref": "my_dev_branch"}\'',
+        ),
+    ] = None,
 ):
     """Add a product to coasti"""
+
+    # Parse skip-prompt answers and internal variables for answers_file
+    extra_data: dict = {}
+    if data is not None:
+        try:
+            extra_data = json.loads(data)
+        except json.JSONDecodeError as e:
+            log.error(f"Invalid JSON in --data: {e}")
+            log.error(f"Input was: {data!r}")
+            raise typer.Exit(code=1)
+
+    copier_data: dict[str, Any] = {}
+    copier_data.update(extra_data)
+
+    vcs_repo = (
+        vcs_repo
+        or extra_data.get("vcs_repo")
+        or prompt_single("Url of the product's git repo:", type=str)
+    )
+    copier_data.update({"vcs_repo": vcs_repo})
 
     config = ProductsConfig()
 
     with resources.path("coasti", "") as module_path:
         p_res = prompt_like_copier_from_template(
             src_path=str(module_path / "product" / "questions"),
-            data={"vcs_repo": vcs_repo},
+            data=copier_data,
             defaults=quiet,
         )
         pid = p_res.answers["id"]
@@ -73,7 +102,9 @@ def add(
 
     log.info(f"Updated {pid} in {str(config.products_yaml_path)}")
 
-    if prompt_single(f"Do you want to install {pid} now?", type=bool, default=True):
+    if not quiet and prompt_single(
+        f"Do you want to install {pid} now?", type=bool, default=True
+    ):
         install(pid)
 
 

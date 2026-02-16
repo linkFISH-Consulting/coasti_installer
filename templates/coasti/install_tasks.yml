@@ -1,7 +1,9 @@
 _tasks:
     - command: "git init"
       when: "{{ _copier_operation == 'copy' and vcs_repo_type != 'skip' }}"
-    - command: "git add .; git commit -m 'Coasti init'"
+    - command: "git add ."
+      when: "{{ _copier_operation == 'copy' and vcs_repo_type != 'skip' }}"
+    - command: "git commit -m \"Coasti init\""
       when: "{{ _copier_operation == 'copy' and vcs_repo_type != 'skip' }}"
     - command: "git remote add origin {{ vcs_online_repo }}"
       when: "{{ _copier_operation == 'copy' and vcs_repo_type == 'remote' }}"

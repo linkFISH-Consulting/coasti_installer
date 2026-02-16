@@ -30,7 +30,7 @@ dev = [
     "pre-commit>=4.5.1",
 ]
 lint = ["ruff>=0.14.14"]
-typed = ["mypy>=1.19.1"]
+typed = ["mypy>=1.19.1", "types-PyYAML"]
 docs = []
 test = ["pytest>=9.0.2", "pytest-cov>=7.0.0"]
 
