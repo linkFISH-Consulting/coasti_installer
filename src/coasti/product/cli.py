@@ -5,8 +5,11 @@ from importlib import resources
 from typing import Annotated, Any, Literal
 
 import copier
+from rich import align
 import typer
 from ruamel.yaml import YAML
+from rich.table import Table
+from rich.console import Console
 
 from coasti.logger import log
 from coasti.prompt import prompt_like_copier_from_template, prompt_single
@@ -21,16 +24,24 @@ app = typer.Typer()
 def list():
     """List installed products"""
 
-    config = ProductsConfig()
+    table = Table(title="Installed Products")
+    table.add_column("Product", style="cyan", no_wrap=True)
+    table.add_column("Property", style="magenta", justify="right")
+    table.add_column("Value", style="green")
 
-    typer.echo(typer.style("products:", fg=typer.colors.BRIGHT_BLACK))
+    config = ProductsConfig()
     for p in config.products:
-        typer.echo(typer.style(f"- name: {p['id']}", fg=typer.colors.WHITE, bold=True))
-        for key, value in p.items():
-            if key != "id":
-                typer.echo(
-                    typer.style(f"  {key}: {value}", fg=typer.colors.BRIGHT_BLACK)
-                )
+        for idx, key in enumerate(p.keys()):
+            value = p[key]
+            table.add_row(
+                p["id"] if idx == 0 else "",
+                key,
+                str(value),
+                end_section=(idx == len(p) - 1),
+            )
+
+    console = Console()
+    console.print(table)
 
 
 @app.command()
