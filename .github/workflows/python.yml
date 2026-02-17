@@ -61,6 +61,8 @@ jobs:
       PYTEST_ADDOPTS: "--color=yes"
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history checkout is needed to create the template bundle
       - name: Install uv and set the Python version
         uses: astral-sh/setup-uv@v7
         with:
@@ -68,9 +70,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group test
-      - name: Produce template bundle
-        run: |
-          python ./src/create_template_bundle.py
       - name: Setup Git
         run: |
           git config --global user.email "you@example.com"

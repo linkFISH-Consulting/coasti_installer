@@ -16,7 +16,9 @@ from coasti import cli
         '{"vcs_repo_type" : "remote", "vcs_online_repo" : "gh.dummy"}',
     ],
 )
-def test_init_success(cli_runner: CliRunner, tmp_path: Path, data: str):
+def test_init_success(
+    cli_runner: CliRunner, tmp_path: Path, data: str, template_bundle
+):
     """Test successful `coasti init` command.
 
     You need to run create_template_bundle.py before this can succeed.

@@ -11,6 +11,12 @@ TLDR:
 - Breaking Changes 1.0.0 (Major Version)
 
 
+## 0.1.4 - 2026-02-17
+
+### Fixed
+
+- Fixed tests when running from main branch.
+- Now using platformdirs to determine template cache dir.
 
 ## 0.1.3
 

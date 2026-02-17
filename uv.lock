@@ -34,10 +34,11 @@ wheels = [
 
 [[package]]
 name = "coasti"
-version = "0.1.3b2"
+version = "0.1.4"
 source = { editable = "." }
 dependencies = [
     { name = "copier" },
+    { name = "platformdirs" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "ruamel-yaml" },
@@ -69,6 +70,7 @@ typed = [
 [package.metadata]
 requires-dist = [
     { name = "copier", specifier = ">=9.11.3" },
+    { name = "platformdirs", specifier = ">=4.5.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "ruamel-yaml", specifier = ">=0.18.10" },

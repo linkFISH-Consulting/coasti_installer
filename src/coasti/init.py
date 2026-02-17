@@ -17,6 +17,7 @@ from typing import Annotated, Any
 
 import copier
 import typer
+from platformdirs import user_cache_dir
 
 from coasti.prompt import prompt_single
 
@@ -120,11 +121,7 @@ def materialize_template_repo() -> Path:
     Returns the repo directory path.
     """
 
-    cache_dir = (
-        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-        / "coasti"
-        / "template-repo"
-    )
+    cache_dir = Path(user_cache_dir("coasti", "template-repo"))
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     repo_dir = cache_dir / "repo"
@@ -136,15 +133,21 @@ def materialize_template_repo() -> Path:
         # however, requires version checks
     log.debug(f"Materializing template repo at {str(repo_dir)}")
 
-    bundle_resource = resources.files("coasti._bundles").joinpath(
-        "template-repo.bundle"
-    )
+    bundle_resource = _get_template_bundle_path()
     with resources.as_file(bundle_resource) as bundle_path:
         subprocess.check_call(
             ["git", "clone", "--quiet", str(bundle_path), str(repo_dir)]
         )
 
     return repo_dir
+
+
+def _get_template_bundle_path():
+    """Location where the template bundle is expected.
+
+    Separate function for easy mocking in tests.
+    """
+    return resources.files("coasti._bundles").joinpath("template-repo.bundle")
 
 
 def _ensure_writable(path: Path) -> None:

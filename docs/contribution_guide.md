@@ -10,7 +10,7 @@
 # this is a manual step for now
 
 # 1) create the git template bundle to ship
-python ./src/create_template_bundle.py
+python ./src/coasti/create_template_bundle.py
 
 # 2) build the package
 uv build
