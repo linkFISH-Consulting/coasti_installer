@@ -268,12 +268,15 @@ def copier_git_injection(
                     "askpass" + (".bat" if sys.platform == "win32" else ".sh")
                 )
             ) as askpass_script:
-                extra_env["GIT_ASKPASS"] = askpass_script
+                extra_env["GIT_ASKPASS"] = str(askpass_script)
                 # scripts simply return the token env var
 
             extra_env["GIT_AUTH_TOKEN"] = https_token
+
+            # Some git flows require the following to force askpass in non-tty contexts,
+            # or gui popups (git-for-windows)
             extra_env["GIT_TERMINAL_PROMPT"] = "0"
-            # Some git flows require this to force askpass in non-tty contexts:
+            extra_env["GCM_INTERACTIVE"] = "false"
 
         elif ssh_key_path:
             if Path(ssh_key_path).is_file():

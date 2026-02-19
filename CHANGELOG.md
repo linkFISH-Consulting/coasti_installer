@@ -11,6 +11,12 @@ TLDR:
 - Breaking Changes 1.0.0 (Major Version)
 
 
+## 0.1.5 - 2026-02-19
+
+### Fixed
+
+- Product install would crash on windows when using git auth token
+
 ## 0.1.4 - 2026-02-17
 
 ### Fixed
