@@ -7,10 +7,12 @@ This gives a consistent style for the back-and-forth with the user.
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generic, TypeVar, cast
 
+import questionary  # used by copier, we mimic
 from copier import JSONSerializable, Phase, Worker
 from copier._types import MISSING
 from copier._user_data import AnswersMap, Question
@@ -72,6 +74,34 @@ class PromptResponse(Generic[TD]):
     def hidden(self):
         """Answers (keys) with when=false."""
         return self.answers_map.hidden
+
+    def merge(self, other: PromptResponse[TD]) -> PromptResponse[TD]:
+        """Return a new PromptResponse that merges `other`.
+
+        Assumes (and does not check) that questions are not duplicated."""
+
+        questions: dict[str, dict[str, Any]] = {}
+        questions.update(deepcopy(self.questions))
+        questions.update(deepcopy(other.questions))
+
+
+        answers_map = deepcopy(self.answers_map)
+
+        # Update answers_map (a dataclass) via its attributes
+        for field_name in (
+            "user",
+            "init",
+            "metadata",
+            "last",
+            "user_defaults",
+            "external",
+            "hidden",
+        ):
+            getattr(answers_map, field_name).update(
+                getattr(other.answers_map, field_name)
+            )
+
+        return PromptResponse(answers_map=answers_map, questions=questions)
 
     def __str__(self) -> str:
         return f"Answers: {str(self.answers)}"
@@ -187,8 +217,6 @@ def _ask_questions_like_copier(
             structure = q.get_questionary_structure()
             try:
                 # questionary returns {var_name: answer}
-                import questionary
-
                 result = questionary.unsafe_prompt(
                     [structure],
                     answers={var_name: q.get_default()},

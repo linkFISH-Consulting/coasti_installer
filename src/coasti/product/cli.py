@@ -131,7 +131,22 @@ def install(
 
     Uses copier, git and details from config/products.yml
     """
-    _install_or_update("install", pid)
+    pid = _check_product_is_in_yaml("install", pid)
+
+    config = ProductsConfig()
+    try:
+        product = config.get_product(pid)
+        product.install()
+    except copier.ProcessExecutionError as e:
+        log.error(
+            f"Failed to install {pid}. Check your connection and authentication."
+        )
+        log.info(e)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        # use typer to exit and avoid stack trace (which might contain auth info).
+        log.error(e)
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -142,16 +157,43 @@ def update(
             help="Id of the product.",
         ),
     ] = None,
+    vcs_ref: Annotated[
+        str | None,
+        typer.Option(
+            "--vcs-ref",
+            help="Version control reference, e.g. git branch or commit"
+        )
+    ] = None
 ):
     """
     Update an installed product
 
     Uses copier, git and details from config/products.yml
     """
-    _install_or_update("update", pid)
+    pid = _check_product_is_in_yaml("update", pid)
+
+    config = ProductsConfig()
+    try:
+        product = config.get_product(pid)
+
+        if vcs_ref is None:
+            vcs_ref = product.details["vcs_ref"]
+
+        product.update(vcs_ref)
+    except copier.ProcessExecutionError as e:
+        log.error(
+            f"Failed to update {pid}. Check your connection and authentication."
+        )
+        log.info(e)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        # use typer to exit and avoid stack trace (which might contain auth info).
+        log.error(e)
+        raise typer.Exit(code=1)
 
 
-def _install_or_update(
+
+def _check_product_is_in_yaml(
     method: Literal["update", "install"],
     pid: str | None,
 ):
@@ -168,21 +210,4 @@ def _install_or_update(
         )
         raise typer.Exit(code=1)
 
-    try:
-        product = config.get_product(pid)
-        if method == "install":
-            product.install()
-        elif method == "update":
-            product.update()
-        else:
-            raise NotImplementedError
-    except copier.ProcessExecutionError as e:
-        log.error(
-            f"Failed to {method} {pid}. Check your connection and authentication."
-        )
-        log.info(e)
-        raise typer.Exit(code=1)
-    except Exception as e:
-        # use typer to exit and avoid stack trace (which might contain auth info).
-        log.error(e)
-        raise typer.Exit(code=1)
+    return pid

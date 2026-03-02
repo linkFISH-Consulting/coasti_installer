@@ -65,7 +65,9 @@ class ProductsConfig:
 
     def get_product(self, pid: str):
         details = self.get_product_details(pid)
-        return Product(details=details, coasti_base_dir=self.coasti_base_dir)
+        return Product(
+            details=details, coasti_base_dir=self.coasti_base_dir, config=self
+        )
 
     def _load_products_config(self):
         config = yaml.load(self.products_yaml_path)
@@ -107,10 +109,17 @@ class Product:
 
     details: ProductDetails
     coasti_base_dir: Path
+    config: ProductsConfig | None
 
-    def __init__(self, coasti_base_dir: Path, details: ProductDetails) -> None:
+    def __init__(
+        self,
+        coasti_base_dir: Path,
+        details: ProductDetails,
+        config: ProductsConfig | None = None,
+    ) -> None:
         self.details = details
         self.coasti_base_dir = coasti_base_dir.absolute()
+        self.config = config
 
     @property
     def id(self):
@@ -186,22 +195,45 @@ class Product:
 
         self._create_symlinks()
 
-    def update(self):
+    def update(self, vcs_ref: str | None):
         """
         Update this product by getting its resources via copier.
         Authentication is retrieved from disk and injected into the git commands.
+
+        Notes
+        -----
+        - Copier might log "No git tags found in template; using HEAD as ref",
+          because it looks for tags in the outer (coasti) repo to compare with
+          the remote (content) repo, and you will likely not have tags there.
         """
+
+        if vcs_ref is None:
+            vcs_ref = self.details["vcs_ref"]
+        elif vcs_ref != self.details["vcs_ref"] and self.config is not None:
+            log.debug(f"Updating products.yml to new vcs_ref '{vcs_ref}'")
+            # FIXME: add upsert method in ProductsConfig that handles token removal etc
+            pid = self.id
+            product_yaml = [p for p in self.config.products if p["id"] == pid][0]
+            product_yaml["vcs_ref"] = vcs_ref
+            self.details["vcs_ref"] = vcs_ref
+            self.config.save_products_config()
 
         # Clone template
         with copier_git_injection(
             https_token=self.vcs_auth_token,
             ssh_key_path=self.vcs_auth_sshkeypath,
         ):
-            log.info(f"Using copier to update {self.id}. Downloading...")
+            log.info(
+                f"Using copier to update {self.id} (vcs_ref {vcs_ref}). Downloading..."
+            )
             copier.run_update(
                 dst_path=self.dst_path,
                 answers_file="config/install_answers.yml",
-                unsafe=True,
+                unsafe=True,  # trust templates, needed because they might have tasks
+                overwrite=True,  # needs to be true for copier update of subprojects
+                skip_answered=True,
+                skip_tasks=False,  # Content package can and should decide this per task
+                vcs_ref=vcs_ref,
             )
 
     def _create_symlinks(self):
