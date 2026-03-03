@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
-from typing import Any, Literal, NotRequired, TypedDict, cast
+from typing import Any, cast
 
 import copier
 import copier._vcs as copier_vcs
@@ -14,6 +14,8 @@ from ruamel.yaml import YAML, CommentedMap
 
 from coasti.logger import log
 from coasti.prompt import PromptResponse
+
+from .questions import ProductDetails
 
 yaml = YAML()
 
@@ -256,17 +258,6 @@ class Product:
                         log.error(e)
                 except Exception as e:
                     log.error(e)
-
-
-class ProductDetails(TypedDict):
-    # see questions/copier.yml
-    vcs_repo: str
-    id: str
-    dst_path: str
-    vcs_ref: str
-    vcs_auth_type: Literal["skip", "Auth Token", "SSH Key"]
-    vcs_auth_token: NotRequired[str]
-    vcs_auth_sshkeypath: NotRequired[str]
 
 
 @contextmanager

@@ -11,7 +11,7 @@ vcs_repo:
 id:
     type: str
     help: "Unique Product identifier. (TODO: fetch from git)"
-    default: "{{ vcs_repo | regex_replace('^.*/', '') | trim('.git') }}"
+    default: "{{ vcs_repo | regex_replace('^.*/', '') | trim('\\.git$') }}"
 
 dst_path:
     type: str

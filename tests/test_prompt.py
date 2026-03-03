@@ -5,6 +5,22 @@ from _pytest.monkeypatch import MonkeyPatch
 from coasti.prompt import PromptResponse, prompt_like_copier
 
 
+def _mk_fake_unsafe_prompt(answer_by_name: dict[str, str]):
+    def fake_unsafe_prompt(structures, answers=None):
+        name = structures[0]["name"]
+
+        if name in answer_by_name:
+            return {name: answer_by_name[name]}
+
+        # fallback: behave like "user hit enter", so we accept the default
+        if isinstance(answers, dict) and name in answers:
+            return {name: answers[name]}
+
+        raise AssertionError(f"Unexpected prompt name: {name}")
+
+    return fake_unsafe_prompt
+
+
 def test_prompt_like_copier_returns_expected_prompt_response():
     questions = {
         "project_name": {
@@ -21,16 +37,12 @@ def test_prompt_like_copier_returns_expected_prompt_response():
     }
 
     with MonkeyPatch.context() as mp:
-
-        def fake_unsafe_prompt(structures, answers=None):
-            name = structures[0]["name"]
-            if name == "project_name":
-                return {"project_name": "Cool App"}
-            if name == "admin_password":
-                return {"admin_password": "s3cr3t"}
-            raise AssertionError(f"Unexpected prompt name: {name}")
-
-        mp.setattr("coasti.prompt.questionary.unsafe_prompt", fake_unsafe_prompt)
+        mp.setattr(
+            "coasti.prompt.questionary.unsafe_prompt",
+            _mk_fake_unsafe_prompt(
+                {"project_name": "Cool App", "admin_password": "s3cr3t"}
+            ),
+        )
         res = prompt_like_copier(questions)
 
     assert res.questions == questions
@@ -44,7 +56,6 @@ def test_prompt_like_copier_returns_expected_prompt_response():
 
 
 def test_prompt_response_merge_answers():
-
     questions_left = {
         "project_name": {"type": "str", "help": "name", "default": "My App"},
     }
@@ -164,17 +175,37 @@ def test_prompt_response_merge_secret_and_hidden():
     }
     assert merged.hidden == {"left_hidden", "right_hidden"}
 
-def _mk_fake_unsafe_prompt(answer_by_name: dict[str, str]):
-    def fake_unsafe_prompt(structures, answers=None):
-        name = structures[0]["name"]
 
-        if name in answer_by_name:
-            return {name: answer_by_name[name]}
+def test_prompt_like_copier_accepts_data_and_skips_prompting_for_those_keys():
+    questions = {
+        "project_name": {
+            "type": "str",
+            "help": "Human readable name",
+            "default": "My App",
+        },
+        "admin_password": {
+            "type": "str",
+            "secret": True,
+            "help": "Used for first login",
+            "default": "",
+        },
+    }
 
-        # fallback: behave like "user hit enter", so we accept the default
-        if isinstance(answers, dict) and name in answers:
-            return {name: answers[name]}
+    with MonkeyPatch.context() as mp:
+        # Only admin_password is expected to be prompted.
+        # If project_name were prompted, _mk_fake_unsafe_prompt would raise
+        # AssertionError("Unexpected prompt name: project_name").
+        mp.setattr(
+            "coasti.prompt.questionary.unsafe_prompt",
+            _mk_fake_unsafe_prompt({"admin_password": "s3cr3t"}),
+        )
 
-        raise AssertionError(f"Unexpected prompt name: {name}")
+        res = prompt_like_copier(questions, data={"project_name": "Preseeded App"})
 
-    return fake_unsafe_prompt
+    assert res.questions == questions
+    assert res.answers == {
+        "project_name": "Preseeded App",
+        "admin_password": "s3cr3t",
+    }
+    assert res.answers_to_remember == {"project_name": "Preseeded App"}
+    assert res.secret == {"admin_password"}

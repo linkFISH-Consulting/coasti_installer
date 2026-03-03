@@ -6,6 +6,7 @@ This gives a consistent style for the back-and-forth with the user.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, MutableMapping
 from copy import deepcopy
 from dataclasses import dataclass
@@ -84,7 +85,6 @@ class PromptResponse(Generic[TD]):
         questions.update(deepcopy(self.questions))
         questions.update(deepcopy(other.questions))
 
-
         answers_map = deepcopy(self.answers_map)
 
         # Update answers_map (a dataclass) via its attributes
@@ -109,10 +109,20 @@ class PromptResponse(Generic[TD]):
 
 def prompt_like_copier(
     questions: Mapping[str, dict[str, Any]],
+    data: Mapping[str, Any] | None = None,
 ):
     """
     Reimplementation of the essential steps in Worker._ask(), but driven by an
     in-memory questions_data mapping (like Template.questions_data).
+
+    Parameters
+    ----------
+    questions:
+        Copier-like questions mapping.
+    data:
+        Pre-populated answers, like Copier's `data`. These are treated as
+        initial answers (`answers.init`) and will be parsed/validated and used
+        to skip prompting for corresponding questions.
 
     ```
     questions = {
@@ -136,15 +146,16 @@ def prompt_like_copier(
     """
 
     with Phase.use(Phase.PROMPT):
-        answers_map = _ask_questions_like_copier(questions)
+        answers_map = _ask_questions_like_copier(questions, answers_data=data)
         return PromptResponse(questions=questions, answers_map=answers_map)
 
 
 def _ask_questions_like_copier(
     questions_data: Mapping[str, dict[str, Any]],
+    answers_data: Mapping[str, Any] | None = None,
 ) -> AnswersMap:
-    # some variables for consistency with typer
-    init: MutableMapping[str, Any] = {}
+    # some variables for consistency with copier
+    init: MutableMapping[str, Any] = dict(answers_data or {})
     last: MutableMapping[str, Any] = {}
     defaults = False
     skip_answered = False
@@ -161,7 +172,7 @@ def _ask_questions_like_copier(
     }
 
     answers = AnswersMap(init=init)
-    jinja_env = SandboxedEnvironment(autoescape=False)
+    jinja_env = _jinja_env_like_copier()
 
     # Mimic Worker._ask() loop
     for var_name, details in questions_data.items():
@@ -242,6 +253,52 @@ def _ask_questions_like_copier(
         context[var_name] = parsed
 
     return answers
+
+
+def _jinja_env_like_copier() -> SandboxedEnvironment:
+    """Get Jinja Environment similar to the one copier uses.
+
+    This is a simple workaround, since copier does not expose its jinja env.
+    For now, we have to add the jinja filters manually. Add as needed.
+
+    To get a list what copier ships by default:
+
+    ```python
+    from copier import Worker
+    w = Worker(src_path=".", dst_path=".", quiet=True)
+    env = w.jinja_env
+    print("\n".join(sorted(env.filters.keys())))
+    ```
+    """
+    env = SandboxedEnvironment(autoescape=False)
+
+    def regex_replace(
+        value: Any, pattern: str, replacement: str = "", count: int = 0
+    ) -> str:
+        s = "" if value is None else str(value)
+        return re.sub(pattern, replacement, s, count=count)
+
+    def expanduser(value: Any) -> str:
+        """
+        - macOS/Linux: "~" and "~user" typically work.
+        - Windows: "~" expands to the current user's home; "~user" often cannot
+          be resolved -> we fall back to the original string.
+        """
+        if value is None:
+            return ""
+        s = str(value)
+
+        if not s.startswith("~"):
+            return s
+
+        try:
+            return str(Path(s).expanduser())
+        except Exception:
+            return s
+
+    env.filters["regex_replace"] = regex_replace
+    env.filters["expanduser"] = expanduser
+    return env
 
 
 def prompt_single(help: str, type: type[T] | None = None, **kwargs) -> T:

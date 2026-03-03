@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from importlib import resources
 from typing import Annotated, Any, Literal
 
 import copier
@@ -11,9 +10,13 @@ from rich.table import Table
 from ruamel.yaml import YAML
 
 from coasti.logger import log
-from coasti.prompt import prompt_like_copier_from_template, prompt_single
+from coasti.prompt import (
+    prompt_like_copier,
+    prompt_single,
+)
 
 from .product import ProductsConfig
+from .questions import PRODUCT_QUESTIONS
 
 yaml = YAML()
 app = typer.Typer()
@@ -50,14 +53,6 @@ def add(
             help="Url of the product's git repo.",
         ),
     ] = None,
-    quiet: Annotated[
-        bool,
-        typer.Option(
-            "-q",
-            "--quiet",
-            help="Don't ask questions, use all defaults, and overwrite.",
-        ),
-    ] = False,
     data: Annotated[
         str | None,
         typer.Option(
@@ -91,16 +86,14 @@ def add(
 
     config = ProductsConfig()
 
-    with resources.path("coasti", "") as module_path:
-        p_res = prompt_like_copier_from_template(
-            src_path=str(module_path / "product" / "questions"),
-            data=copier_data,
-            defaults=quiet,
-        )
-        pid = p_res.answers["id"]
+    p_res = prompt_like_copier(
+        questions=PRODUCT_QUESTIONS,
+        data=copier_data,
+    )
+    pid = p_res.answers["id"]
 
     if pid in config.product_ids:
-        if not quiet and not prompt_single(
+        if not prompt_single(
             f"Product id {pid} already exists. Overwrite?", type=bool, default=True
         ):
             log.info("Exiting")
@@ -111,9 +104,7 @@ def add(
 
     log.info(f"Updated {pid} in {str(config.products_yaml_path)}")
 
-    if not quiet and prompt_single(
-        f"Do you want to install {pid} now?", type=bool, default=True
-    ):
+    if not prompt_single(f"Do you want to install {pid} now?", type=bool, default=True):
         install(pid)
 
 
@@ -138,9 +129,7 @@ def install(
         product = config.get_product(pid)
         product.install()
     except copier.ProcessExecutionError as e:
-        log.error(
-            f"Failed to install {pid}. Check your connection and authentication."
-        )
+        log.error(f"Failed to install {pid}. Check your connection and authentication.")
         log.info(e)
         raise typer.Exit(code=1)
     except Exception as e:
@@ -160,10 +149,9 @@ def update(
     vcs_ref: Annotated[
         str | None,
         typer.Option(
-            "--vcs-ref",
-            help="Version control reference, e.g. git branch or commit"
-        )
-    ] = None
+            "--vcs-ref", help="Version control reference, e.g. git branch or commit"
+        ),
+    ] = None,
 ):
     """
     Update an installed product
@@ -181,16 +169,13 @@ def update(
 
         product.update(vcs_ref)
     except copier.ProcessExecutionError as e:
-        log.error(
-            f"Failed to update {pid}. Check your connection and authentication."
-        )
+        log.error(f"Failed to update {pid}. Check your connection and authentication.")
         log.info(e)
         raise typer.Exit(code=1)
     except Exception as e:
         # use typer to exit and avoid stack trace (which might contain auth info).
         log.error(e)
         raise typer.Exit(code=1)
-
 
 
 def _check_product_is_in_yaml(
