@@ -15,7 +15,7 @@ from coasti.prompt import (
     prompt_single,
 )
 
-from .product import ProductsConfig
+from .product import Product, ProductsYamlIO
 from .questions import PRODUCT_QUESTIONS
 
 yaml = YAML()
@@ -31,7 +31,7 @@ def list():
     table.add_column("Property", style="magenta", justify="right")
     table.add_column("Value", style="green")
 
-    config = ProductsConfig()
+    config = ProductsYamlIO()
     for p in config.products:
         for idx, (key, value) in enumerate(p.items()):
             table.add_row(
@@ -84,28 +84,31 @@ def add(
     )
     copier_data.update({"vcs_repo": vcs_repo})
 
-    config = ProductsConfig()
+    # check if you can access this
+    # if not (or always?) ask for credentials
 
-    p_res = prompt_like_copier(
-        questions=PRODUCT_QUESTIONS,
-        data=copier_data,
-    )
-    pid = p_res.answers["id"]
+    with ProductsYamlIO.edit() as pio:
+        p_res = prompt_like_copier(
+            questions=PRODUCT_QUESTIONS,
+            data=copier_data,
+        )
+        product = Product(yaml_io=pio, data=p_res)
 
-    if pid in config.product_ids:
-        if not prompt_single(
-            f"Product id {pid} already exists. Overwrite?", type=bool, default=True
-        ):
-            log.info("Exiting")
-            raise typer.Exit(code=1)
+        if product.id in pio.product_ids:
+            if not prompt_single(
+                f"Product id {product.id} already exists. Overwrite?",
+                type=bool,
+                default=True,
+            ):
+                log.info("Exiting")
+                raise typer.Exit(code=1)
 
-    config.upsert_product_from_answers(p_res)
-    config.save_products_config()
+        product.write()
 
-    log.info(f"Updated {pid} in {str(config.products_yaml_path)}")
-
-    if not prompt_single(f"Do you want to install {pid} now?", type=bool, default=True):
-        install(pid)
+    if prompt_single(
+        f"Do you want to install {product.id} now?", type=bool, default=True
+    ):
+        install(product.id)
 
 
 @app.command()
@@ -122,9 +125,9 @@ def install(
 
     Uses copier, git and details from config/products.yml
     """
-    pid = _check_product_is_in_yaml("install", pid)
+    pid = _product_id_from_yaml_or_prompt(pid)
 
-    config = ProductsConfig()
+    config = ProductsYamlIO()
     try:
         product = config.get_product(pid)
         product.install()
@@ -158,14 +161,14 @@ def update(
 
     Uses copier, git and details from config/products.yml
     """
-    pid = _check_product_is_in_yaml("update", pid)
+    pid = _product_id_from_yaml_or_prompt(pid)
 
-    config = ProductsConfig()
+    config = ProductsYamlIO()
     try:
         product = config.get_product(pid)
 
         if vcs_ref is None:
-            vcs_ref = product.details["vcs_ref"]
+            vcs_ref = product.data["vcs_ref"]
 
         product.update(vcs_ref)
     except copier.ProcessExecutionError as e:
@@ -178,14 +181,13 @@ def update(
         raise typer.Exit(code=1)
 
 
-def _check_product_is_in_yaml(
-    method: Literal["update", "install"],
+def _product_id_from_yaml_or_prompt(
     pid: str | None,
 ):
-    config = ProductsConfig()
+    config = ProductsYamlIO()
     if pid is None:
         pid = prompt_single(
-            f"Select the product to {method}:", type=str, choices=config.product_ids
+            "Select the product to use:", type=str, choices=config.product_ids
         )
 
     if pid not in config.product_ids:

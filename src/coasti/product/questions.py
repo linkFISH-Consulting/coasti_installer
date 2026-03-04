@@ -1,18 +1,31 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal, NotRequired, TypedDict
 
 
-class ProductDetails(TypedDict):
+class ProductData(TypedDict):
+    """
+    Answers to product-specific questions,
+
+    which will end up in config/products.yml
+    """
+
     # see questions/copier.yml
     vcs_repo: str
     id: str
     dst_path: str
     vcs_ref: str
     vcs_auth_type: Literal["skip", "Auth Token", "SSH Key"]
-    vcs_auth_token: NotRequired[str]
-    vcs_auth_sshkeypath: NotRequired[str]
+    vcs_auth_value: NotRequired[str]
+    # depending on type, either path to an ssh key pair, or a token.
+    # senintal value: "__masked__"
 
+
+    # installed_at: datetime
+    # last_updated_at: datetime
+
+AUTH_SENTINEL = "__masked__"
 
 PRODUCT_QUESTIONS = {
     "vcs_repo": {"type": "str", "help": "Url of the product's git repo"},
