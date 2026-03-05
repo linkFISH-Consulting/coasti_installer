@@ -17,7 +17,6 @@ Product         (in RAM Instance around ProductData with functions to install et
 
 from __future__ import annotations
 
-import os
 import sys
 from contextlib import contextmanager
 from copy import deepcopy
@@ -52,7 +51,7 @@ class ProductsYamlIO:
 
     @classmethod
     @contextmanager
-    def edit(cls, coast_base_dir: Path ):
+    def edit(cls, coast_base_dir: Path):
         """
         Create a ProductsYamlIO, allow edits, and persist products.yml on exit.
 

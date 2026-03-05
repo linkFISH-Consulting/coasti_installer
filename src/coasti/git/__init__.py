@@ -3,11 +3,9 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import copier._vcs as copier_vcs
-from plumbum import TF
-from plumbum.commands.modifiers import FG
 from plumbum.commands.processes import ProcessExecutionError, ProcessTimedOut
 
 from coasti.logger import log
@@ -26,6 +24,12 @@ def copier_git_injection(
     - ssh_key_path: absolute path to an SSH private key to force for SSH clones/fetches.
 
     We monkeypatch copiers get_git() command to keep env vars in a small scope.
+
+    Example
+    ```
+    with copier_git_injection(https_token=vcs_auth_token):
+        can_access_git_repo(repo_ulr)
+    ```
     """
     if ssh_key_path is not None and https_token is not None:
         raise ValueError("Provide either https_token or ssh_key_path")

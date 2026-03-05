@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import json
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -145,8 +145,6 @@ def add(
         if not can_access_git_repo(vcs_repo):
             log.error("Could not access repo, despite authentication.")
             raise typer.Exit(code=1)
-
-
 
     if product.id in yaml_io.product_ids:
         if quiet or not prompt_single(
