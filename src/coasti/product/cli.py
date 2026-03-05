@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
+import os
+from pathlib import Path
 from typing import Annotated, Any
 
 import copier
@@ -9,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 from ruamel.yaml import YAML
 
+from coasti.git import can_access_git_repo, copier_git_injection
 from coasti.logger import log
 from coasti.prompt import (
     prompt_like_copier,
@@ -22,8 +26,35 @@ yaml = YAML()
 app = typer.Typer()
 
 
+@app.callback()
+def entrypoint(ctx: typer.Context):
+    """Callback to make sure requirements are met to work with products."""
+
+    quiet: bool = ctx.obj.get("quiet", False)
+    coasti_base_dir = Path(os.getenv("COASTI_BASE_DIR", Path.cwd())).absolute()
+
+    dir_is_valid = (coasti_base_dir / "config" / "products.yml").is_file()
+    if not dir_is_valid and not quiet:
+        coasti_base_dir = Path(
+            prompt_single(
+                help="Specify the coasti directory (cd there or set COASTI_BASE_DIR "
+                "env var to avoid this prompt)",
+                type=str,
+                default="/coasti",
+                # FIXME: add validator so these kind of checks can trigger re-prompt
+            )
+        ).absolute()
+        dir_is_valid = (coasti_base_dir / "config" / "products.yml").is_file()
+
+    if not dir_is_valid:
+        log.error(f"Invalid coasti base dir: {str(coasti_base_dir)}")
+        raise typer.Exit(code=1)
+
+    ctx.obj["coasti_base_dir"] = coasti_base_dir
+
+
 @app.command()
-def list():
+def list(ctx: typer.Context):
     """List installed products"""
 
     table = Table(title="Installed Products")
@@ -31,7 +62,7 @@ def list():
     table.add_column("Property", style="magenta", justify="right")
     table.add_column("Value", style="green")
 
-    yaml_io = ProductsYamlIO()
+    yaml_io = ProductsYamlIO(ctx.obj["coasti_base_dir"])
     for pid in yaml_io.product_ids:
         p = yaml_io.get_enry(pid)
         for idx, (key, value) in enumerate(p.items()):
@@ -69,6 +100,7 @@ def add(
     quiet: bool = ctx.obj.get("quiet", False)
 
     # Parse skip-prompt answers and internal variables for answers_file
+    questions = deepcopy(PRODUCT_QUESTIONS)
     extra_data: dict = {}
     if data is not None:
         try:
@@ -88,17 +120,35 @@ def add(
     )
     copier_data.update({"vcs_repo": vcs_repo})
 
-    # check if you can access this
-    # if not (or always?) ask for credentials
+    # check if you can access the git repo
+    if not can_access_git_repo(vcs_repo):
+        log.info("Failed to access repo without authentication.")
+        questions["vcs_auth_type"]["choices"].remove("skip")
+        questions["vcs_auth_type"]["default"] = "Auth Token"
+    else:
+        questions["vcs_auth_type"]["help"] = (
+            "Optional: " + questions["vcs_auth_type"]["help"]
+        )
 
-    pio = ProductsYamlIO()
+    yaml_io = ProductsYamlIO(ctx.obj["coasti_base_dir"])
     p_res = prompt_like_copier(
-        questions=PRODUCT_QUESTIONS,
+        questions=questions,
         data=copier_data,
     )
-    product = Product(yaml_io=pio, data=p_res)
+    product = Product(yaml_io=yaml_io, data=p_res)
 
-    if product.id in pio.product_ids:
+    # FIXME: add single prompt verification via function so we can verify in place
+    with copier_git_injection(
+        https_token=product.vcs_auth_token,
+        ssh_key_path=product.vcs_auth_sshkeypath,
+    ):
+        if not can_access_git_repo(vcs_repo):
+            log.error("Could not access repo, despite authentication.")
+            raise typer.Exit(code=1)
+
+
+
+    if product.id in yaml_io.product_ids:
         if quiet or not prompt_single(
             f"Product id {product.id} already exists. Overwrite?",
             type=bool,
@@ -112,11 +162,12 @@ def add(
     if not quiet and prompt_single(
         f"Do you want to install {product.id} now?", type=bool, default=True
     ):
-        install(product.id)
+        install(ctx, product.id)
 
 
 @app.command()
 def install(
+    ctx: typer.Context,
     pid: Annotated[
         str | None,
         typer.Argument(
@@ -129,11 +180,10 @@ def install(
 
     Uses copier, git and details from config/products.yml
     """
-    pid = _product_id_from_yaml_or_prompt(pid)
-
-    config = ProductsYamlIO()
+    yaml_io = ProductsYamlIO(ctx.obj["coasti_base_dir"])
+    pid = _product_id_from_yaml_or_prompt(yaml_io, pid)
     try:
-        product = config.get_product(pid)
+        product = yaml_io.get_product(pid)
         product.install()
     except copier.ProcessExecutionError as e:
         log.error(f"Failed to install {pid}. Check your connection and authentication.")
@@ -147,6 +197,7 @@ def install(
 
 @app.command()
 def update(
+    ctx: typer.Context,
     pid: Annotated[
         str | None,
         typer.Argument(
@@ -165,11 +216,10 @@ def update(
 
     Uses copier, git and details from config/products.yml
     """
-    pid = _product_id_from_yaml_or_prompt(pid)
-
-    config = ProductsYamlIO()
+    yaml_io = ProductsYamlIO(ctx.obj["coasti_base_dir"])
+    pid = _product_id_from_yaml_or_prompt(yaml_io, pid)
     try:
-        product = config.get_product(pid)
+        product = yaml_io.get_product(pid)
 
         if vcs_ref is None:
             vcs_ref = product.data["vcs_ref"]
@@ -186,18 +236,18 @@ def update(
 
 
 def _product_id_from_yaml_or_prompt(
+    yaml_io: ProductsYamlIO,
     pid: str | None,
 ):
-    config = ProductsYamlIO()
     if pid is None:
         pid = prompt_single(
-            "Select the product to use:", type=str, choices=config.product_ids
+            "Select the product to use:", type=str, choices=yaml_io.product_ids
         )
 
-    if pid not in config.product_ids:
+    if pid not in yaml_io.product_ids:
         log.error(
             f"{pid} not found in products. Available products are:\n"
-            f"  {config.product_ids}"
+            f"  {yaml_io.product_ids}"
         )
         raise typer.Exit(code=1)
 

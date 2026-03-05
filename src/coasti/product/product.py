@@ -46,16 +46,13 @@ class ProductsYamlIO:
     coasti_base_dir: Path
     _yaml_data: CommentedMap | None
 
-    def __init__(self, coast_base_dir: Path | None = None) -> None:
-        # FIXME: this should be a typer callback.
-        self.coasti_base_dir = coast_base_dir or Path(
-            os.getenv("COASTI_BASE_DIR", Path.cwd())
-        )
+    def __init__(self, coast_base_dir: Path) -> None:
+        self.coasti_base_dir = coast_base_dir
         self._yaml_data = None
 
     @classmethod
     @contextmanager
-    def edit(cls, coast_base_dir: Path | None = None):
+    def edit(cls, coast_base_dir: Path ):
         """
         Create a ProductsYamlIO, allow edits, and persist products.yml on exit.
 
@@ -204,8 +201,8 @@ class Product:
         if self.vcs_auth_type == "skip":
             return None
 
-        res = self.data.get("vcs_auth_token", AUTH_FILE_SENTINEL)
-        if res := AUTH_FILE_SENTINEL:
+        res = self.data.get("vcs_auth_value", AUTH_FILE_SENTINEL)
+        if res == AUTH_FILE_SENTINEL:
             if not self.secret_path.is_file():
                 log.warning(f"{self.id} auth value neither in details nor in file")
             res = self.secret_path.read_text()

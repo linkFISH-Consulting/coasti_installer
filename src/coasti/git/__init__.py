@@ -3,9 +3,12 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import copier._vcs as copier_vcs
+from plumbum import TF
+from plumbum.commands.modifiers import FG
+from plumbum.commands.processes import ProcessExecutionError, ProcessTimedOut
 
 from coasti.logger import log
 
@@ -71,3 +74,32 @@ def copier_git_injection(
         yield
     finally:
         copier_vcs.get_git = original_get_git
+
+
+def can_access_git_repo(repo_url: str, *, timeout_seconds: float = 15) -> bool:
+    """
+    Probe if we can reach a repo using Copier's git command.
+
+    This is a *non-authenticated* probe:
+    - no tokens
+    - no ssh key overrides
+    - relies only on whatever git/ssh is already configured on the machine
+
+    Implementation: `git ls-remote <repo_url> -q`
+    """
+
+    cmd = copier_vcs.get_git()["ls-remote", str(repo_url), "-q"]
+    try:
+        _code, _stdout, _stderr = cmd.run(timeout=timeout_seconds)
+        return True
+    except ProcessTimedOut:
+        log.debug(
+            f"Git repo access check timed out after {timeout_seconds}: {repo_url}"
+        )
+        return False
+    except ProcessExecutionError as e:
+        stderr = (e.stderr or "").strip().replace("\n", " ")
+        stdout = (e.stdout or "").strip().replace("\n", " ")
+        code = e.retcode
+        log.debug(f"Git repo access check failed: {code=} {stdout=} {stderr=}")
+        return False

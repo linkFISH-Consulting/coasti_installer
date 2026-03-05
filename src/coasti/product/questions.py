@@ -37,24 +37,10 @@ AUTH_SKIP_SENTINEL = "__skip__"  # when no auth used
 
 PRODUCT_QUESTIONS: QuestionsDict = {
     "vcs_repo": {"type": "str", "help": "Url of the product's git repo"},
-    "id": {
-        "type": "str",
-        "help": "Unique Product identifier. (TODO: fetch from git)",
-        "default": "{{ vcs_repo | regex_replace('^.*/', '') | trim('\\.git$') }}",
-    },
-    "dst_path": {
-        "type": "str",
-        "help": "Install location:",
-        "default": "products/{{ id }}",
-    },
-    "vcs_ref": {
-        "type": "str",
-        "help": "Version control reference (git branch, tag or commit)",
-        "default": "main",
-    },
+    # ask for authentication first, to check connection
     "vcs_auth_type": {
         "type": "str",
-        "help": "How to authenticate with the remote repo?",
+        "help": "How to authenticateq at {{ vcs_repo }}",
         "choices": ["skip", "Auth Token", "SSH Key"],
         "default": "skip",
     },
@@ -82,5 +68,21 @@ PRODUCT_QUESTIONS: QuestionsDict = {
         ),
         "secret": True,
         "when": False,
+    },
+    # Fixme: id should come from a custom coasti.yml (or copier.yml?)
+    "id": {
+        "type": "str",
+        "help": "Unique Product identifier:",
+        "default": "{{ vcs_repo | regex_replace('^.*/', '') | trim('\\.git$') }}",
+    },
+    "dst_path": {
+        "type": "str",
+        "help": "Install location:",
+        "default": "products/{{ id }}",
+    },
+    "vcs_ref": {
+        "type": "str",
+        "help": "Version control reference (git branch, tag or commit)",
+        "default": "main",
     },
 }
