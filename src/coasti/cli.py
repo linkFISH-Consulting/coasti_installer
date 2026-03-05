@@ -29,7 +29,7 @@ def main(
             "-q",
             help="Avoid user prompts",
         ),
-    ] = False
+    ] = False,
 ):
     """Coasti Installer - Initialize projects and install products."""
     setup_logging_handler(verbose)

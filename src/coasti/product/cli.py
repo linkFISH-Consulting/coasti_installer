@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 import copier
 import typer
@@ -66,7 +66,7 @@ def add(
 ):
     """Add a product to coasti"""
 
-    quiet : bool = ctx.obj.get("quiet", False)
+    quiet: bool = ctx.obj.get("quiet", False)
 
     # Parse skip-prompt answers and internal variables for answers_file
     extra_data: dict = {}
@@ -91,23 +91,23 @@ def add(
     # check if you can access this
     # if not (or always?) ask for credentials
 
-    with ProductsYamlIO.edit() as pio:
-        p_res = prompt_like_copier(
-            questions=PRODUCT_QUESTIONS,
-            data=copier_data,
-        )
-        product = Product(yaml_io=pio, data=p_res)
+    pio = ProductsYamlIO()
+    p_res = prompt_like_copier(
+        questions=PRODUCT_QUESTIONS,
+        data=copier_data,
+    )
+    product = Product(yaml_io=pio, data=p_res)
 
-        if product.id in pio.product_ids:
-            if quiet or not prompt_single(
-                f"Product id {product.id} already exists. Overwrite?",
-                type=bool,
-                default=True,
-            ):
-                log.info("Not overwriting product, exciting.")
-                raise typer.Exit(code=1)
+    if product.id in pio.product_ids:
+        if quiet or not prompt_single(
+            f"Product id {product.id} already exists. Overwrite?",
+            type=bool,
+            default=True,
+        ):
+            log.info("Not overwriting product, exciting.")
+            raise typer.Exit(code=1)
 
-        product.write()
+    product.write()
 
     if not quiet and prompt_single(
         f"Do you want to install {product.id} now?", type=bool, default=True

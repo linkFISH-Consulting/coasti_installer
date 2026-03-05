@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from _pytest.monkeypatch import MonkeyPatch
 
-from coasti.prompt import PromptResponse, prompt_like_copier
+from coasti.prompt import PromptResponse, QuestionsDict, prompt_like_copier
 
 
 def _mk_fake_unsafe_prompt(answer_by_name: dict[str, str]):
@@ -22,7 +22,7 @@ def _mk_fake_unsafe_prompt(answer_by_name: dict[str, str]):
 
 
 def test_prompt_like_copier_returns_expected_prompt_response():
-    questions = {
+    questions: QuestionsDict = {
         "project_name": {
             "type": "str",
             "help": "Human readable name",
@@ -56,10 +56,10 @@ def test_prompt_like_copier_returns_expected_prompt_response():
 
 
 def test_prompt_response_merge_answers():
-    questions_left = {
+    questions_left: QuestionsDict = {
         "project_name": {"type": "str", "help": "name", "default": "My App"},
     }
-    questions_right = {
+    questions_right: QuestionsDict = {
         "license": {
             "type": "str",
             "help": "license",
@@ -94,7 +94,7 @@ def test_prompt_response_merge_answers():
 
 
 def test_prompt_response_merge_secret_and_hidden():
-    questions_left = {
+    questions_left: QuestionsDict = {
         "project_name": {"type": "str", "help": "name", "default": "My App"},
         "left_secret": {
             "type": "str",
@@ -110,7 +110,7 @@ def test_prompt_response_merge_secret_and_hidden():
             "default": "LH",
         },
     }
-    questions_right = {
+    questions_right: QuestionsDict = {
         "license": {
             "type": "str",
             "help": "license",
@@ -177,7 +177,7 @@ def test_prompt_response_merge_secret_and_hidden():
 
 
 def test_prompt_like_copier_accepts_data_and_skips_prompting_for_those_keys():
-    questions = {
+    questions: QuestionsDict = {
         "project_name": {
             "type": "str",
             "help": "Human readable name",

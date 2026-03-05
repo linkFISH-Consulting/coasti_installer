@@ -17,10 +17,10 @@ Product         (in RAM Instance around ProductData with functions to install et
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from copy import deepcopy
 import os
 import sys
+from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
 from typing import cast
 
@@ -31,7 +31,7 @@ from coasti.git import copier_git_injection
 from coasti.logger import log
 from coasti.prompt import PromptResponse
 
-from .questions import ProductData, AUTH_SENTINEL
+from .questions import AUTH_FILE_SENTINEL, AUTH_SKIP_SENTINEL, ProductData
 
 yaml = YAML()
 
@@ -59,7 +59,8 @@ class ProductsYamlIO:
         """
         Create a ProductsYamlIO, allow edits, and persist products.yml on exit.
 
-        All changes to products should happen in this context.
+        Note 2026-03-05: still deciding if we need this, since we call
+        our  .write from the product's .write
 
         Usage:
         ```
@@ -125,7 +126,10 @@ class ProductsYamlIO:
         Does not handle anything beyond the yaml writes."""
 
         # FIXME: remove this check once we are sure it stripped reliably by product.
-        assert product.data.get("vcs_auth_value", AUTH_SENTINEL) == AUTH_SENTINEL
+        assert product.data.get("vcs_auth_value", AUTH_FILE_SENTINEL) in [
+            AUTH_FILE_SENTINEL,
+            AUTH_SKIP_SENTINEL,
+        ]
 
         if product.id in self.product_ids:
             entry = self.get_enry(product.id)
@@ -149,17 +153,10 @@ class Product:
     - write method, to update the (many-products) yaml via ProductsYamlIO
     - io for this products features, like the secrets
     - install and update methods
-
-    To presist a product, use an io context:
-    ```
-    with ProductsYamlIO.edit() as pio:
-        product = pio.get_product("some_id")
-        product.write()
-    ```
     """
 
     data: ProductData
-    # try not to keep auth_tokens in ram, when constructing, dump and then use properties.
+    # avoid auth_tokens in ram, when constructing, dump and then use properties.
     # use senitnal value for load_from_disk
     yaml_io: ProductsYamlIO
 
@@ -173,6 +170,10 @@ class Product:
         if isinstance(data, PromptResponse):
             data = data.answers
         self.data = deepcopy(data)
+
+        # make sure helper questions dont persist
+        self.data.pop("vcs_auth_sshkeypath", None)
+        self.data.pop("vcs_auth_token", None)
 
     @property
     def id(self):
@@ -203,8 +204,8 @@ class Product:
         if self.vcs_auth_type == "skip":
             return None
 
-        res = self.data.get("vcs_auth_token", AUTH_SENTINEL)
-        if res := AUTH_SENTINEL:
+        res = self.data.get("vcs_auth_token", AUTH_FILE_SENTINEL)
+        if res := AUTH_FILE_SENTINEL:
             if not self.secret_path.is_file():
                 log.warning(f"{self.id} auth value neither in details nor in file")
             res = self.secret_path.read_text()
@@ -228,11 +229,13 @@ class Product:
         Updates the yaml, and persists auth tokens.
         """
         if (
-            self.vcs_auth_type != "skip"
-            and self.data.get("vcs_auth_value", AUTH_SENTINEL) != AUTH_SENTINEL
+            self.vcs_auth_type in ["Auth Token", "SSH Key"]
+            and self.data.get("vcs_auth_value", AUTH_FILE_SENTINEL)
+            != AUTH_FILE_SENTINEL
         ):
             self._write_and_clear_secrets()
         self.yaml_io.upsert_product(self)
+        self.yaml_io.write()
 
     def _write_and_clear_secrets(self):
         """Take unmasked answers and save auth token or ssh key path to file.
@@ -240,10 +243,10 @@ class Product:
         After export, sets the unmasked answers to AUTH_SENTINEL.
         """
 
-        auth = self.data.get("vcs_auth_value", AUTH_SENTINEL)
+        auth = self.data.get("vcs_auth_value", AUTH_FILE_SENTINEL)
 
-        if auth == AUTH_SENTINEL:
-            log.debug("Secret only holds sentinale value, skipping export")
+        if auth in [AUTH_FILE_SENTINEL, AUTH_SKIP_SENTINEL]:
+            log.debug("Secret only holds sentinal value, skipping export")
         elif not self.secret_path.is_file():
             log.debug(f"New secret, saving to {str(self.secret_path)}")
             self.secret_path.write_text(auth)
@@ -254,7 +257,7 @@ class Product:
             log.debug("Secret has not changed, skipping export")
 
         # Now we are sure that secrets are in file, so lets remove them from RAM
-        self.data["vcs_auth_value"] = AUTH_SENTINEL
+        self.data["vcs_auth_value"] = AUTH_FILE_SENTINEL
 
     def install(self):
         """
@@ -292,13 +295,11 @@ class Product:
         if vcs_ref is None:
             vcs_ref = self.data["vcs_ref"]
         elif vcs_ref != self.data["vcs_ref"] and self.yaml_io is not None:
-            log.debug(f"Updating products.yml to new vcs_ref '{vcs_ref}'")
-            # FIXME: add upsert method in ProductsConfig that handles token removal etc
-            pid = self.id
-            product_yaml = [p for p in self.yaml_io.products if p["id"] == pid][0]
-            product_yaml["vcs_ref"] = vcs_ref
+            log.debug(
+                f"Writing product to update products.yml to new vcs_ref '{vcs_ref}'"
+            )
             self.data["vcs_ref"] = vcs_ref
-            self.yaml_io.write()
+            self.write()
 
         # Clone template
         with copier_git_injection(

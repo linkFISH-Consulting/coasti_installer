@@ -17,11 +17,11 @@ from coasti import cli
     ],
 )
 def test_init_success(
-    cli_runner: CliRunner, tmp_path: Path, data: str, template_bundle
+    cli_runner: CliRunner, tmp_path: Path, data: str, coasti_template_bundle
 ):
     """Test successful `coasti init` command.
 
-    You need to run create_template_bundle.py before this can succeed.
+    template_bundle creation is handled by the fixture, so it has to remain an argument.
     """
     coasti_dir = tmp_path / "coasti"
 
