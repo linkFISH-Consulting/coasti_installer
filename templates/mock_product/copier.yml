@@ -1,0 +1,5 @@
+_min_copier_version: 9.11.3
+
+_exclude_templates:
+    - .gitkeep
+    - copier.yml
