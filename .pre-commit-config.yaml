@@ -1,0 +1,23 @@
+# to enable:
+# uv tool install pre-commit
+# pre-commit install
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.11
+    hooks:
+      # Run the linter.
+      - id: ruff-check
+        args: [--fix, --config=./pyproject.toml]
+      # Run the formatter.
+      - id: ruff-format
+        args: [--config=./pyproject.toml]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        language: system
+        entry: uv run mypy --config-file ./pyproject.toml
+        types: [python]
+        require_serial: true
