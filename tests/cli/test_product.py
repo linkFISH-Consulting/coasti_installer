@@ -70,6 +70,7 @@ class TestProductFlow:
         cli_runner: CliRunner,
         coasti_instance_dir: Path,
         mock_product_repo: Path,
+        tmp_path: Path,
         secret_kind,
     ):
         """
@@ -89,7 +90,7 @@ class TestProductFlow:
 
         # we ask questions conditionally
         if secret_kind == "SSH Key":
-            data.update({"vcs_auth_sshkeypath": f"{sid}_secret"})
+            data.update({"vcs_auth_sshkeypath": str(tmp_path)})
         elif secret_kind == "Auth Token":
             data.update({"vcs_auth_token": f"{sid}_secret"})
 
@@ -99,10 +100,13 @@ class TestProductFlow:
         )
 
         assert result.exit_code == 0
-
         secret_file = coasti_instance_dir / "config" / "secrets" / f"vcs_auth_{sid}"
         assert secret_file.is_file()
-        assert secret_file.read_text() == f"{sid}_secret"
+
+        if secret_kind == "SSH Key":
+            assert secret_file.read_text() == data["vcs_auth_sshkeypath"]
+        elif secret_kind == "Auth Token":
+            assert secret_file.read_text() == data["vcs_auth_token"]
 
     def test_added_products_are_listed(
         self,

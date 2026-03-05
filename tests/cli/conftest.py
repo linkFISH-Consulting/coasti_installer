@@ -16,7 +16,7 @@ def cli_runner():
     return CliRunner()
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def coasti_template_bundle():
     """
     Create bundle resources for the coasti template.
@@ -43,9 +43,9 @@ def coasti_template_bundle():
 
 
 @pytest.fixture(scope="class")
-def coasti_instance_dir():
+def coasti_instance_dir(coasti_template_bundle):
     """
-    A working instance of coasit with local version control.
+    A working instance of coasti with local version control.
     """
     from coasti import cli
 
@@ -55,7 +55,13 @@ def coasti_instance_dir():
         command = ["init", "--data", '{"vcs_repo_type" : "local"}']
         command += ["--vcs-ref", "HEAD"]
         command += [str(coasti_dir)]
-        _result = cli_runner.invoke(cli.app, command)
+        result = cli_runner.invoke(cli.app, command)
+        assert result.exit_code == 0, (
+            f"coasti init failed.\n"
+            f"exit_code={result.exit_code}\n"
+            f"stdout:\n{result.stdout}\n"
+            f"exception:\n{result.exception!r}\n"
+        )
         assert coasti_dir.is_dir()
         assert (coasti_dir / "products").is_dir()
 
