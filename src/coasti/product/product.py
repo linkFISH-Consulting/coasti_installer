@@ -98,10 +98,10 @@ class ProductsYamlIO:
         return [p["id"] for p in self.yaml_data["products"]]
 
     def get_product(self, pid: str):
-        entry = self._get_enry(pid)
+        entry = self.get_enry(pid)
         return Product(data=entry, yaml_io=self)
 
-    def _get_enry(self, pid: str):
+    def get_enry(self, pid: str):
         entries = self.yaml_data["products"]
         return [e for e in entries if e.get("id") == pid][0]
 
@@ -128,7 +128,7 @@ class ProductsYamlIO:
         assert product.data.get("vcs_auth_value", AUTH_SENTINEL) == AUTH_SENTINEL
 
         if product.id in self.product_ids:
-            entry = self._get_enry(product.id)
+            entry = self.get_enry(product.id)
             log.debug(
                 f"Upating {product.id} in products.yml: {entry} ---> {product.data}"
             )

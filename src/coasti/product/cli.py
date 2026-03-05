@@ -31,8 +31,9 @@ def list():
     table.add_column("Property", style="magenta", justify="right")
     table.add_column("Value", style="green")
 
-    config = ProductsYamlIO()
-    for p in config.products:
+    yaml_io = ProductsYamlIO()
+    for pid in yaml_io.product_ids:
+        p = yaml_io.get_enry(pid)
         for idx, (key, value) in enumerate(p.items()):
             table.add_row(
                 p["id"] if idx == 0 else "",
