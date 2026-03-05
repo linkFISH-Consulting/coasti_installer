@@ -48,6 +48,7 @@ def list():
 
 @app.command()
 def add(
+    ctx: typer.Context,
     vcs_repo: Annotated[
         str | None,
         typer.Argument(
@@ -64,6 +65,8 @@ def add(
     ] = None,
 ):
     """Add a product to coasti"""
+
+    quiet : bool = ctx.obj.get("quiet", False)
 
     # Parse skip-prompt answers and internal variables for answers_file
     extra_data: dict = {}
@@ -96,17 +99,17 @@ def add(
         product = Product(yaml_io=pio, data=p_res)
 
         if product.id in pio.product_ids:
-            if not prompt_single(
+            if quiet or not prompt_single(
                 f"Product id {product.id} already exists. Overwrite?",
                 type=bool,
                 default=True,
             ):
-                log.info("Exiting")
+                log.info("Not overwriting product, exciting.")
                 raise typer.Exit(code=1)
 
         product.write()
 
-    if prompt_single(
+    if not quiet and prompt_single(
         f"Do you want to install {product.id} now?", type=bool, default=True
     ):
         install(product.id)
