@@ -12,20 +12,32 @@ app = typer.Typer()
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     verbose: Annotated[
         int,
         typer.Option(
             "--verbose",
             "-v",
             count=True,
-            help="Increase verbosity (-v, -vv, -vvv).",
+            help="Increase verbosity (-v, -vv, -vvv)",
         ),
     ] = 0,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "--quiet",
+            "-q",
+            help="Avoid user prompts",
+        ),
+    ] = False,
 ):
     """Coasti Installer - Initialize projects and install products."""
     setup_logging_handler(verbose)
-
     app.pretty_exceptions_short = False
+
+    # Store shared state for all subcommands:
+    ctx.ensure_object(dict)
+    ctx.obj["quiet"] = quiet
 
 
 @app.command()

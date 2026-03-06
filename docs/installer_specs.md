@@ -39,6 +39,7 @@ coasti tool add
         ├── tools.yml       # which to enable, how to get it
         ├── [product]/      # symlink
     ├── products/
+        ├── [product]/      # code of installed product, associated with remote content repo
     ├── tools/              # shared between products. TBD: or in products, weil eh images.
     ├── data/
         ├── [product]/      # symlink

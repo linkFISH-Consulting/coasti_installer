@@ -1,47 +1,85 @@
+"""
+Product related backend logic.
+
+# Abstraction
+
+config/products.yml
+
+ProductsYamlIO  (loaded yaml of all products with io features, getters for products)
+    .get_product()      -> Product
+    .get_product_data() -> ProductData
+
+ProductData  (yaml fields per Prodouct inside config/products.yml)
+
+Product         (in RAM Instance around ProductData with functions to install etc)
+    .write()    to update ProductData and write back into yaml
+"""
+
 from __future__ import annotations
 
-import os
 import sys
-from collections.abc import Iterator
 from contextlib import contextmanager
-from importlib import resources
+from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal, NotRequired, TypedDict, cast
+from typing import cast
 
 import copier
-import copier._vcs as copier_vcs
 from ruamel.yaml import YAML, CommentedMap
 
+from coasti.git import copier_git_injection
 from coasti.logger import log
 from coasti.prompt import PromptResponse
+
+from .questions import AUTH_FILE_SENTINEL, AUTH_SKIP_SENTINEL, ProductData
 
 yaml = YAML()
 
 
-class ProductsConfig:
+class ProductsYamlIO:
     """
     Manage products configuration.
 
-    Convenient access to config/products.yml and writing into it
+    Convenient r/w access to config/products.yml
     """
 
     coasti_base_dir: Path
-    _products_config: CommentedMap | None
+    _yaml_data: CommentedMap | None
 
-    def __init__(self, coast_base_dir: Path | None = None) -> None:
-        self.coasti_base_dir = coast_base_dir or Path(
-            os.getenv("COASTI_BASE_DIR", Path.cwd())
-        )
-        self._products_config = None
+    def __init__(self, coast_base_dir: Path) -> None:
+        self.coasti_base_dir = coast_base_dir
+        self._yaml_data = None
+
+    @classmethod
+    @contextmanager
+    def edit(cls, coast_base_dir: Path):
+        """
+        Create a ProductsYamlIO, allow edits, and persist products.yml on exit.
+
+        Note 2026-03-05: still deciding if we need this, since we call
+        our  .write from the product's .write
+
+        Usage:
+        ```
+        with ProductsYamlIO.edit() as pio:
+            product = pio.get_product("some_id")
+            product.write()
+        ```
+        """
+        self = cls(coast_base_dir=coast_base_dir)
+        _ = self.yaml_data  # ensure loaded before edits
+        try:
+            yield self
+        finally:
+            self.write()
 
     @property
-    def products_config(self) -> CommentedMap:
-        if self._products_config is None:
-            self._products_config = self._load_products_config()
-        return cast(CommentedMap, self._products_config)
+    def yaml_data(self) -> CommentedMap:
+        if self._yaml_data is None:
+            self._yaml_data = self._load_products_config()
+        return cast(CommentedMap, self._yaml_data)
 
     @property
-    def products_yaml_path(self):
+    def yaml_path(self):
         """Get the abs path to the products yaml."""
         products_yaml_path = self.coasti_base_dir / "config" / "products.yml"
         if not products_yaml_path.is_file():
@@ -52,23 +90,20 @@ class ProductsConfig:
         return products_yaml_path
 
     @property
-    def products(self) -> list[ProductDetails]:
-        """Loaded product details from config/products.yml"""
-        return self.products_config["products"]
-
-    @property
     def product_ids(self) -> list[str]:
-        return [p["id"] for p in self.products_config["products"]]
-
-    def get_product_details(self, pid):
-        return [p for p in self.products if p.get("id") == pid][0]
+        """Product ids"""
+        return [p["id"] for p in self.yaml_data["products"]]
 
     def get_product(self, pid: str):
-        details = self.get_product_details(pid)
-        return Product(details=details, coasti_base_dir=self.coasti_base_dir)
+        entry = self.get_enry(pid)
+        return Product(data=entry, yaml_io=self)
+
+    def get_enry(self, pid: str):
+        entries = self.yaml_data["products"]
+        return [e for e in entries if e.get("id") == pid][0]
 
     def _load_products_config(self):
-        config = yaml.load(self.products_yaml_path)
+        config = yaml.load(self.yaml_path)
         if not isinstance(config, CommentedMap) or "products" not in config.keys():
             raise ValueError(
                 "Could not find the products section in config/products.yml."
@@ -77,93 +112,148 @@ class ProductsConfig:
         config["products"] = config.get("products") or []
         return config
 
-    def save_products_config(self):
-        with self.products_yaml_path.open("w") as f:
-            yaml.dump(self.products_config, f)
+    def write(self):
+        with self.yaml_path.open("w") as f:
+            yaml.dump(self.yaml_data, f)
 
-    def upsert_product_from_answers(self, p_res: PromptResponse[ProductDetails]):
-        """
-        Insert or update a product to our yaml based on a questionaire.
-        The `.answers` in the PromptResponse should be ProductDetails.
-        """
-        p = Product(details=p_res.answers, coasti_base_dir=self.coasti_base_dir)
-        p.save_secrets()
+    def upsert_product(self, product: Product):
+        """Save product data to yaml, overwriting if already found.
 
-        pid = p_res.answers["id"]
-        if pid in self.product_ids:
-            product = [p for p in self.products if p["id"] == pid][0]
-            product.update(p_res.answers_to_remember)
+        Does not handle anything beyond the yaml writes."""
+
+        # FIXME: remove this check once we are sure it stripped reliably by product.
+        assert product.data.get("vcs_auth_value", AUTH_FILE_SENTINEL) in [
+            AUTH_FILE_SENTINEL,
+            AUTH_SKIP_SENTINEL,
+        ]
+
+        if product.id in self.product_ids:
+            entry = self.get_enry(product.id)
+            log.debug(
+                f"Upating {product.id} in products.yml: {entry} ---> {product.data}"
+            )
+            entry.update(product.data)
         else:
-            self.products.append(p_res.answers_to_remember)
+            log.debug(f"Adding {product.id} to products.yml: {product.data}")
+            self.yaml_data["products"].append(product.data)
+
+        log.info(f"Updated {product.id} in products.yml")
 
 
 class Product:
     """
-    Thin wrapper around ProductDetails with functions to install.
+    View on an individual product.
 
-    ProductDetails are a set of yaml variables, that is consistent for each
-    list item in config/products.yml.
+    Contains:
+    - ProductData that resembles the yaml, for this particular product
+    - write method, to update the (many-products) yaml via ProductsYamlIO
+    - io for this products features, like the secrets
+    - install and update methods
     """
 
-    details: ProductDetails
-    coasti_base_dir: Path
+    data: ProductData
+    # avoid auth_tokens in ram, when constructing, dump and then use properties.
+    # use senitnal value for load_from_disk
+    yaml_io: ProductsYamlIO
 
-    def __init__(self, coasti_base_dir: Path, details: ProductDetails) -> None:
-        self.details = details
-        self.coasti_base_dir = coasti_base_dir.absolute()
+    def __init__(
+        self,
+        yaml_io: ProductsYamlIO,
+        data: ProductData | PromptResponse[ProductData],
+    ) -> None:
+
+        self.yaml_io = yaml_io
+        if isinstance(data, PromptResponse):
+            data = data.answers
+        self.data = deepcopy(data)
+
+        # make sure helper questions dont persist
+        self.data.pop("vcs_auth_sshkeypath", None)
+        self.data.pop("vcs_auth_token", None)
 
     @property
     def id(self):
-        return self.details["id"]
+        return self.data["id"]
 
     @property
     def secret_path(self):
         return self.coasti_base_dir / "config" / "secrets" / f"vcs_auth_{self.id}"
 
     @property
+    def coasti_base_dir(self):
+        return self.yaml_io.coasti_base_dir.absolute()
+
+    @property
     def dst_path(self):
-        return self.coasti_base_dir / self.details["dst_path"]
+        return self.coasti_base_dir / self.data["dst_path"]
+
+    @property
+    def vcs_auth_type(self):
+        return self.data["vcs_auth_type"]
+
+    @property
+    def vcs_auth_value(self):
+        """Get auth secret from file (or ram).
+
+        None if no auth configured.
+        """
+        if self.vcs_auth_type == "skip":
+            return None
+
+        res = self.data.get("vcs_auth_value", AUTH_FILE_SENTINEL)
+        if res == AUTH_FILE_SENTINEL:
+            if not self.secret_path.is_file():
+                log.warning(f"{self.id} auth value neither in details nor in file")
+            res = self.secret_path.read_text()
+        return res
 
     @property
     def vcs_auth_token(self):
-        if self.details["vcs_auth_type"] != "Auth Token":
+        if self.data["vcs_auth_type"] != "Auth Token":
             return None
-
-        res = self.details.get("vcs_auth_token", None)
-        if res is None:
-            if not self.secret_path.exists():
-                log.warning(f"{self.id} auth token neither in details nor in file")
-            res = self.secret_path.read_text()
-        return res
+        return self.vcs_auth_value
 
     @property
     def vcs_auth_sshkeypath(self):
-        if self.details["vcs_auth_type"] != "SSH Key":
+        if self.data["vcs_auth_type"] != "SSH Key":
             return None
+        return self.vcs_auth_value
 
-        res = self.details.get("vcs_auth_sshkeypath", None)
-        if res is None:
-            if not self.secret_path.exists():
-                log.warning(f"{self.id} sshkeypath neither in details nor in file")
-            res = self.secret_path.read_text()
-        return res
+    def write(self):
+        """Persiste the current state of this product.
 
-    def save_secrets(self):
-        """Take unmasked answers and save auth token or ssh key path to file."""
-        if self.details["vcs_auth_type"] == "Auth Token":
-            auth = self.details.get("vcs_auth_token")
-        elif self.details["vcs_auth_type"] == "SSH Key":
-            auth = self.details.get("vcs_auth_sshkeypath")
+        Updates the yaml, and persists auth tokens.
+        """
+        if (
+            self.vcs_auth_type in ["Auth Token", "SSH Key"]
+            and self.data.get("vcs_auth_value", AUTH_FILE_SENTINEL)
+            != AUTH_FILE_SENTINEL
+        ):
+            self._write_and_clear_secrets()
+        self.yaml_io.upsert_product(self)
+        self.yaml_io.write()
+
+    def _write_and_clear_secrets(self):
+        """Take unmasked answers and save auth token or ssh key path to file.
+
+        After export, sets the unmasked answers to AUTH_SENTINEL.
+        """
+
+        auth = self.data.get("vcs_auth_value", AUTH_FILE_SENTINEL)
+
+        if auth in [AUTH_FILE_SENTINEL, AUTH_SKIP_SENTINEL]:
+            log.debug("Secret only holds sentinal value, skipping export")
+        elif not self.secret_path.is_file():
+            log.debug(f"New secret, saving to {str(self.secret_path)}")
+            self.secret_path.write_text(auth)
+        elif self.secret_path.read_text() != auth:
+            log.info(f"Secret changed, overwriting {str(self.secret_path)}")
+            self.secret_path.write_text(auth)
         else:
-            log.debug(
-                f"No secrets to write for auth type {self.details['vcs_auth_type']}"
-            )
-            return
+            log.debug("Secret has not changed, skipping export")
 
-        if auth is None:
-            raise ValueError("To save secrets, provide them in ProductDetails.")
-
-        self.secret_path.write_text(auth)
+        # Now we are sure that secrets are in file, so lets remove them from RAM
+        self.data["vcs_auth_value"] = AUTH_FILE_SENTINEL
 
     def install(self):
         """
@@ -178,30 +268,51 @@ class Product:
         ):
             log.info(f"Using copier to install {self.id}. Downloading...")
             copier.run_copy(
-                src_path=self.details["vcs_repo"],
+                src_path=self.data["vcs_repo"],
                 dst_path=self.dst_path,
-                vcs_ref=self.details["vcs_ref"],
+                vcs_ref=self.data["vcs_ref"],
                 unsafe=True,
             )
 
         self._create_symlinks()
 
-    def update(self):
+    def update(self, vcs_ref: str | None):
         """
         Update this product by getting its resources via copier.
         Authentication is retrieved from disk and injected into the git commands.
+
+        Notes
+        -----
+        - Copier might log "No git tags found in template; using HEAD as ref",
+          because it looks for tags in the outer (coasti) repo to compare with
+          the remote (content) repo, and you will likely not have tags there.
         """
+
+        if vcs_ref is None:
+            vcs_ref = self.data["vcs_ref"]
+        elif vcs_ref != self.data["vcs_ref"] and self.yaml_io is not None:
+            log.debug(
+                f"Writing product to update products.yml to new vcs_ref '{vcs_ref}'"
+            )
+            self.data["vcs_ref"] = vcs_ref
+            self.write()
 
         # Clone template
         with copier_git_injection(
             https_token=self.vcs_auth_token,
             ssh_key_path=self.vcs_auth_sshkeypath,
         ):
-            log.info(f"Using copier to update {self.id}. Downloading...")
+            log.info(
+                f"Using copier to update {self.id} (vcs_ref {vcs_ref}). Downloading..."
+            )
             copier.run_update(
                 dst_path=self.dst_path,
                 answers_file="config/install_answers.yml",
-                unsafe=True,
+                unsafe=True,  # trust templates, needed because they might have tasks
+                overwrite=True,  # needs to be true for copier update of subprojects
+                skip_answered=True,
+                skip_tasks=False,  # Content package can and should decide this per task
+                vcs_ref=vcs_ref,
             )
 
     def _create_symlinks(self):
@@ -224,77 +335,3 @@ class Product:
                         log.error(e)
                 except Exception as e:
                     log.error(e)
-
-
-class ProductDetails(TypedDict):
-    # see questions/copier.yml
-    vcs_repo: str
-    id: str
-    dst_path: str
-    vcs_ref: str
-    vcs_auth_type: Literal["skip", "Auth Token", "SSH Key"]
-    vcs_auth_token: NotRequired[str]
-    vcs_auth_sshkeypath: NotRequired[str]
-
-
-@contextmanager
-def copier_git_injection(
-    *,
-    https_token: str | None = None,
-    ssh_key_path: str | Path | None = None,
-) -> Iterator[None]:
-    """
-    Inject auth settings into all git commands executed by Copier.
-
-    - https_token: used for HTTPS clones/fetches via GIT_ASKPASS.
-    - ssh_key_path: absolute path to an SSH private key to force for SSH clones/fetches.
-
-    We monkeypatch copiers get_git() command to keep env vars in a small scope.
-    """
-    if ssh_key_path is not None and https_token is not None:
-        raise ValueError("Provide either https_token or ssh_key_path")
-
-    if ssh_key_path is not None and not Path(ssh_key_path).is_absolute():
-        raise ValueError("ssh_key_path must be an absolute path")
-
-    original_get_git = copier_vcs.get_git
-
-    try:
-        extra_env: dict[str, Any] = {}
-
-        if https_token:
-            with resources.as_file(
-                resources.files("coasti.product").joinpath(
-                    "askpass" + (".bat" if sys.platform == "win32" else ".sh")
-                )
-            ) as askpass_script:
-                extra_env["GIT_ASKPASS"] = str(askpass_script)
-                # scripts simply return the token env var
-
-            extra_env["GIT_AUTH_TOKEN"] = https_token
-
-            # Some git flows require the following to force askpass in non-tty contexts,
-            # or gui popups (git-for-windows)
-            extra_env["GIT_TERMINAL_PROMPT"] = "0"
-            extra_env["GCM_INTERACTIVE"] = "false"
-
-        elif ssh_key_path:
-            if Path(ssh_key_path).is_file():
-                extra_env["GIT_SSH_COMMAND"] = (
-                    f"ssh -i {ssh_key_path} -o IdentitiesOnly=yes"
-                )
-            else:
-                # avoid Prompt injection, skip ssh overwrite
-                log.warning(f"'{ssh_key_path}' is not a valid path for an ssh key.")
-
-        def patched_get_git(*args, **kwargs):
-            git = original_get_git()
-            # Attach env to the command object.
-            # (Plumbum supports cmd.with_env(VAR=...))
-            cmd = git.with_env(**extra_env) if extra_env else git
-            return cmd
-
-        copier_vcs.get_git = patched_get_git
-        yield
-    finally:
-        copier_vcs.get_git = original_get_git
