@@ -1,5 +1,9 @@
 # Coasti installer
 
+```{typer} coasti.cli:app
+:prog: coasti
+```
+
 ```{toctree}
 :maxdepth: 2
 :caption: Contents:
