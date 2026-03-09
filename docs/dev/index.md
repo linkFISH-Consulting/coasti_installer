@@ -5,6 +5,7 @@ Welcome to the `coasti` developer guide! This section provides information for c
 ```{toctree}
 contribution.md
 docker.md
+documentation.md
 ```
 
 ```{tip}
