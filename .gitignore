@@ -22,3 +22,4 @@ crash.*.log
 
 # exclude template bundles to keep git small - we still package and ship it
 src/coasti/_bundles/*
+docs/_build

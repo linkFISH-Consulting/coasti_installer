@@ -28,7 +28,3 @@ uv pip install --index-url https://test.pypi.org/simple/ --no-deps coasti
 export UV_PUBLISH_TOKEN="pypi-XXXXXXXXXXXXXXXXXXXXXXXX"
 uv publish
 ```
-
-## Dev Container
-
-See [docker/README.md](docker/README.md)
