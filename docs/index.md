@@ -6,8 +6,9 @@
 
 ```{toctree}
 :maxdepth: 2
-:caption: Contents:
+:caption: 📚 Contents:
 
+getting_started
 installer_specs.md
 env_vars.md
 ```
