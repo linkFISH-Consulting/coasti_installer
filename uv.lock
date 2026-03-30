@@ -278,7 +278,7 @@ wheels = [
 
 [[package]]
 name = "coasti"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "copier" },
@@ -288,7 +288,6 @@ dependencies = [
     { name = "ruamel-yaml" },
     { name = "sphinxcontrib-typer" },
     { name = "typer" },
-    { name = "xkcdpass" },
 ]
 
 [package.dev-dependencies]
@@ -343,7 +342,6 @@ requires-dist = [
     { name = "ruamel-yaml", specifier = ">=0.18.10" },
     { name = "sphinxcontrib-typer", extras = ["docs"], specifier = ">=0.8.1" },
     { name = "typer", specifier = ">=0.15.2" },
-    { name = "xkcdpass", specifier = ">=1.20" },
 ]
 
 [package.metadata.requires-dev]
@@ -2554,15 +2552,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c7/79/12135bdf8b9c9367b8701c2c19a14c913c120b882d50b014ca0d38083c2c/wsproto-1.3.2.tar.gz", hash = "sha256:b86885dcf294e15204919950f666e06ffc6c7c114ca900b060d6e16293528294", size = 50116, upload-time = "2025-11-20T18:18:01.871Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/f5/10b68b7b1544245097b2a1b8238f66f2fc6dcaeb24ba5d917f52bd2eed4f/wsproto-1.3.2-py3-none-any.whl", hash = "sha256:61eea322cdf56e8cc904bd3ad7573359a242ba65688716b0710a5eb12beab584", size = 24405, upload-time = "2025-11-20T18:18:00.454Z" },
-]
-
-[[package]]
-name = "xkcdpass"
-version = "1.30.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/98/bdd7df66d995eab38887a8eb0afb023750b0c590eb7d8545a7b722f683ef/xkcdpass-1.30.0.tar.gz", hash = "sha256:8a3a6b60255da40d0e5c812458280278c82d2c1cb90e48afbd6777dbbf8795c3", size = 2763380, upload-time = "2026-01-11T16:09:15.567Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6b/be/ea93adc1b4597b62c236d61dc6cf0e26ca8a729cb5afae4dc5acc5b33fa8/xkcdpass-1.30.0-py3-none-any.whl", hash = "sha256:3653a4a1e13de230808bcaf11f8c04207a5d3df8e2f7e1de698e11c262b5b797", size = 2746372, upload-time = "2026-01-12T14:48:30.627Z" },
 ]
 
 [[package]]
